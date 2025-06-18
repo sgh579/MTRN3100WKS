@@ -21,8 +21,10 @@ void setup() {
 }
 
 void loop() {
-  motor.setPWM(200);
-  delay(3000);
-  motor.setPWM(0);
-  delay(3000);
+
+  Serial.print("count: ");
+  Serial.print(encoder.getCount()); // Print the current rotation
+  Serial.print("  rotation: ");// Print the current rotation
+  Serial.println(encoder.getRotation()); // Print the current rotation
+  delay(100);
 }
