@@ -9,14 +9,15 @@ public:
     BangBangController(float speed, float deadband) : speed(speed), deadband(deadband) {}
 
     // Compute the output signal required from the current/actual value.
+    // it's about position control, so the input is the current position of the motor.
     float compute(float input) {
         error = setpoint - (input - zero_ref);
 
-        // TODO IMPLIMENT BANG BANG CONTROLLER - REFER TO THE TUTORIAL SLIDES
+        // IMPLIMENT BANG BANG CONTROLLER - REFER TO THE TUTORIAL SLIDES
         if (error > deadband) {
-            output = speed;  // Move forward
+            output = -speed;  // Move forward
         } else if (error < -deadband) {
-            output = -speed; // Move backward
+            output = speed; // Move backward
         } else {
             output = 0;      // Stop
         }

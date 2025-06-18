@@ -22,9 +22,13 @@ void setup() {
 
 void loop() {
 
-  Serial.print("count: ");
-  Serial.print(encoder.getCount()); // Print the current rotation
-  Serial.print("  rotation: ");// Print the current rotation
-  Serial.println(encoder.getRotation()); // Print the current rotation
-  delay(100);
+  controller.tune(20, 0.5); // Tune the controller parameters
+  int controller_output = controller.compute(encoder.getRotation());
+  motor.setPWM(controller_output); 
+  Serial.print("controller output: ");
+  Serial.println(controller_output);
+  Serial.print("controller error: ");
+  Serial.println(controller.getError());
+  delay(10);
+
 }
