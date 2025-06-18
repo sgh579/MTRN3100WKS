@@ -32,7 +32,7 @@ public:
         // NOTE: DO NOT PLACE SERIAL PRINT STATEMENTS IN THIS FUNCTION
         // NOTE: DO NOT CALL THIS FUNCTION MANUALLY IT WILL ONLY WORK IF CALLED BY THE INTERRUPT
         // Increase or Decrease the count by one based on the reading on encoder pin 2
-        count += (digitalRead(encoder2_pin) == HIGH) ? 1 : -1;
+        count += (digitalRead(encoder2_pin) == HIGH) ? -1 : 1;
         interrupts();
     }
 

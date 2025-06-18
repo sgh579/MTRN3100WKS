@@ -11,24 +11,27 @@ mtrn3100::Motor motor(MOT1PWM,MOT1DIR);
 #define EN_B 4
 mtrn3100::Encoder encoder(EN_A, EN_B);
 
-mtrn3100::BangBangController controller(120,0);
+// mtrn3100::BangBangController controller(120,0); // speed, deadband
+mtrn3100::PIDController controller(600, 1, 10); // Kp, Ki, Kd 
 
 
 void setup() {
   Serial.begin(9600);
-  controller.zeroAndSetTarget(encoder.getRotation(), 2.0); // Set the target as 2 Radians
+  controller.zeroAndSetTarget(encoder.getRotation(), 6.3); // Set the target as 2 Radians
 
 }
 
 void loop() {
 
-  controller.tune(20, 0.5); // Tune the controller parameters
+  Serial.print("controller error: ");
+  Serial.println(controller.getError());
+
   int controller_output = controller.compute(encoder.getRotation());
+  
   motor.setPWM(controller_output); 
   Serial.print("controller output: ");
   Serial.println(controller_output);
-  Serial.print("controller error: ");
-  Serial.println(controller.getError());
-  delay(10);
+
+  delay(50);
 
 }

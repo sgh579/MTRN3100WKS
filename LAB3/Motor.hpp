@@ -25,7 +25,12 @@ public:
 
       // Output digital direction pin based on if input signal is positive or negative.
       // Output PWM signal between 0 - 255.
-      analogWrite(pwm_pin, abs(pwm)); // Write the absolute value of pwm to the PWM pin
+      int speed = abs(pwm);
+      if (speed > 255)
+      {
+        speed = 255;
+      }
+      analogWrite(pwm_pin, speed); // Write the absolute value of pwm to the PWM pin
       digitalWrite(dir_pin, pwm >= 0 ? HIGH : LOW); // Set direction pin
     }
 
