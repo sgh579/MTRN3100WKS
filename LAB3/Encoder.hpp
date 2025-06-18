@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#define M_PIF 3.1415926f
+
 namespace mtrn3100 {
 
 
@@ -16,7 +18,9 @@ public:
         pinMode(encoder1_pin, INPUT_PULLUP);
         pinMode(encoder2_pin, INPUT_PULLUP);
 
-        // TODO: attach the interrupt on pin one such that it calls the readEncoderISR function on a rising edge
+        // attach the interrupt on pin one such that it calls the readEncoderISR function on a rising edg
+        attachInterrupt(digitalPinToInterrupt(encoder1_pin), readEncoderISR, RISING);
+
 
     }
 
@@ -27,17 +31,20 @@ public:
 
         // NOTE: DO NOT PLACE SERIAL PRINT STATEMENTS IN THIS FUNCTION
         // NOTE: DO NOT CALL THIS FUNCTION MANUALLY IT WILL ONLY WORK IF CALLED BY THE INTERRUPT
-        // TODO: Increase or Decrease the count by one based on the reading on encoder pin 2
-
+        // Increase or Decrease the count by one based on the reading on encoder pin 2
+        count += (digitalRead(encoder2_pin) == HIGH) ? 1 : -1;
         interrupts();
     }
 
     // Helper function which to convert encouder count to radians
     float getRotation() {
+        // return the current rotation in radians when called
+        return count * (2.0f * M_PIF / counts_per_revolution);
+    }
 
-        // TODO: Convert encoder count to radians
-
-        return 0;
+    int getCount() {
+        // return the current count when called
+        return count;
     }
 
 private:
@@ -52,7 +59,7 @@ public:
     const uint8_t encoder2_pin;
     volatile int8_t direction;
     float position = 0;
-    uint16_t counts_per_revolution = 0; //TODO: Identify how many encoder counts are in one rotation
+    uint16_t counts_per_revolution = 700; 
     volatile long count = 0;
     uint32_t prev_time;
     bool read = false;
