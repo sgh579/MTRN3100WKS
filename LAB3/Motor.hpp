@@ -12,7 +12,9 @@ namespace mtrn3100 {
 class Motor {
 public:
     Motor( uint8_t pwm_pin, uint8_t in2) :  pwm_pin(pwm_pin), dir_pin(in2) {
-        // TODO: Set both pins as output
+        //  Setboth pins as output
+        pinMode(pwm_pin, OUTPUT);
+        pinMode(dir_pin, OUTPUT);
     }
 
 
@@ -21,8 +23,10 @@ public:
 
     void setPWM(int16_t pwm) {
 
-      // TODO: Output digital direction pin based on if input signal is positive or negative.
-      // TODO: Output PWM signal between 0 - 255.
+      // Output digital direction pin based on if input signal is positive or negative.
+      // Output PWM signal between 0 - 255.
+      analogWrite(pwm_pin, abs(pwm)); // Write the absolute value of pwm to the PWM pin
+      digitalWrite(dir_pin, pwm >= 0 ? HIGH : LOW); // Set direction pin
     }
 
 private:

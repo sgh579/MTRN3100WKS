@@ -17,8 +17,12 @@ mtrn3100::BangBangController controller(120,0);
 void setup() {
   Serial.begin(9600);
   controller.zeroAndSetTarget(encoder.getRotation(), 2.0); // Set the target as 2 Radians
+
 }
 
 void loop() {
-
+  motor.setPWM(200);
+  delay(3000);
+  motor.setPWM(0);
+  delay(3000);
 }
