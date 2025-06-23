@@ -2,21 +2,21 @@
 #include "Motor.hpp"
 #include "PIDController.hpp"
 
-#define MOT1PWM 9 // PIN 9 is motor1's PWM pin
-#define MOT1DIR 10
+#define MOT1PWM 11 // PIN 11 is motor1's PWM pin
+#define MOT1DIR 12
 
-#define MOT2PWM ?// PIN ? is motor2's PWM pin
-#define MOT2DIR ?
+#define MOT2PWM 9// PIN 9 is motor2's PWM pin
+#define MOT2DIR 10
 
 // TODO: create a struct for this, avoid using 2 separate motor objects
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 
 #define EN1_A 2 // PIN 2 is encoder1's interupt
-#define EN1_B 4
+#define EN1_B 7
 
-#define EN2_A  ?// PIN ? is encoder2's interupt
-#define EN2_B  ?
+#define EN2_A  3// PIN ? is encoder2's interupt
+#define EN2_B  8
 
 mtrn3100::Encoder encoder1(EN1_A, EN1_B);
 mtrn3100::Encoder encoder2(EN2_A, EN2_B);
@@ -34,7 +34,7 @@ void setup() {
   float target_motion_rotation_radians = target_motion_length * motion_length_to_rotation_scale * (2.0f * M_PIF / encoder1.counts_per_revolution);
 
   controller1.zeroAndSetTarget(encoder1.getRotation(), target_motion_rotation_radians); 
-  controller2.zeroAndSetTarget(encoder2.getRotation(), target_motion_rotation_radians); 
+  controller2.zeroAndSetTarget(encoder2.getRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 }
 
 void loop() {
@@ -42,8 +42,8 @@ void loop() {
   int controller1_output = controller1.compute(encoder1.getRotation());
   int controller2_output = controller2.compute(encoder2.getRotation());
   
-  motor1.setPWM(controller_output1); 
-  motor2.setPWM(controller_output2); 
+  motor1.setPWM(controller1_output); 
+  motor2.setPWM(controller2_output); 
 
   delay(50);  // loop interval, picked by random, to be adjusted based on the application requirements
 
