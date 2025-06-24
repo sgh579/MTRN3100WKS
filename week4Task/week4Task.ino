@@ -40,12 +40,12 @@ mtrn3100::PIDController controller2(kP_2, kI_2, kD_2); // Kp, Ki, Kd , motor2's 
 void setup() {
   Serial.begin(9600);
 
-  float target_motion_length = 1000; // 1000 mm, specified by task4
+  float target_motion_length = 200; // 1000 mm, specified by task4
   float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
   float r = 15.5;
-  float target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale * 700) / (2.0f * M_PIF * r ) ;
+  float target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
-  target_motion_rotation_radians = 2.0f * M_PIF;
+  // target_motion_rotation_radians = 2.0f * M_PIF;
 
   controller1.zeroAndSetTarget(encoder1.getRotation(), target_motion_rotation_radians); 
   controller2.zeroAndSetTarget(encoder2.getRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
