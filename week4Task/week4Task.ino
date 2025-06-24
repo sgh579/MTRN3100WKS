@@ -23,15 +23,16 @@ mtrn3100::Encoder encoder1(EN1_A, EN1_B);
 mtrn3100::Encoder2 encoder2(EN2_A, EN2_B);
 
 // this implementation is a PID controller based on location
+
 // we need a new implementation that is unversial and can be used for speed control, path following, etc.
 
-float kP_1 = 250;
-float kI_1 = 0;
-float kD_1 = 5;
+float kP_1 = 100;
+float kI_1 = 0.01;
+float kD_1 = 0;
 
-float kP_2 = 250;
-float kI_2 = 0;
-float kD_2 = 5;
+float kP_2 = 100;
+float kI_2 = 0.01;
+float kD_2 = 0;
 
 mtrn3100::PIDController controller1(kP_1, kI_1, kD_1); // Kp, Ki, Kd , motor1's position controller
 mtrn3100::PIDController controller2(kP_2, kI_2, kD_2); // Kp, Ki, Kd , motor2's position controller
@@ -68,6 +69,6 @@ void loop() {
   Serial.println(encoder2.getCount());
 
 
-  delay(50);  // loop interval, picked by random, to be adjusted based on the application requirements
+  delay(5);  // loop interval, picked by random, to be adjusted based on the application requirements
 
 }
