@@ -12,7 +12,7 @@ MPU6050 mpu(Wire);
 #define EN_2_B 8 //These are the pins for the PCB encoder
 
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
-mtrn3100::EncoderOdometry encoder_odometry(0,0); //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
+mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
 mtrn3100::IMUOdometry IMU_odometry;
 
 

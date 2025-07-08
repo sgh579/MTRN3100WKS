@@ -10,16 +10,16 @@ namespace mtrn3100 {
 
         void update(float accel_x, float accel_y) {
             unsigned long currentTime = millis();
-            float dt = (currentTime - lastUpdateTime);  // Convert to seconds
+            float dt = (currentTime - lastUpdateTime);  //to  Convert to seconds
             lastUpdateTime = currentTime;
 
             // Integrate acceleration to get velocity
             vx += accel_x * dt/1000;
             vy += accel_y * dt/1000;
 
-            // TODO: Integrate velocity to get position
-            x += 0
-            y += 0
+            // Integrate velocity to get position
+            x += vx*dt/1000;
+            y += vy*dt/1000;
         }
 
         float getX() const { return x; }
