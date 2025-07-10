@@ -1,7 +1,12 @@
 #include "DualEncoder.hpp"
 #include "EncoderOdometry.hpp"
-#include "Wire.h"
+#include <SPI.h>
+#include <Wire.h>
 #include <MPU6050_light.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <string.h>
+#include <stdio.h>
 
 MPU6050 mpu(Wire);
 
@@ -10,9 +15,35 @@ MPU6050 mpu(Wire);
 #define EN_2_A 3 //These are the pins for the PCB encoder
 #define EN_2_B 8 //These are the pins for the PCB encoder
 
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1
+#define SCREEN_ADDRESS 0x3C
+
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
 
+/*************** SCREEN *******************/
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Mode 1: Show data on the screen
+float debug_float_1 = 123;
+float debug_float_2 = 456;
+float debug_float_3 = 789.123;
+float debug_float_4 = 4;
+float debug_float_5 = 5;
+float debug_float_6 = 6;
+float debug_float_7 = 7;
+float debug_float_8 = 8;
+float debug_float_9 = 9;
+float debug_float_10 = 10;
+float debug_float_11 = 11;
+float debug_float_12 = 12;
+float debug_float_13 = 13;
+float debug_float_14 = 14;
+float debug_float_15 = 15;
+float debug_float_16 = 16;
 
 int loop_counter = 0;
 
@@ -30,6 +61,21 @@ void setup() {
     delay(1000);
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
+
+    // screen
+    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for(;;); // Don't proceed, loop forever
+    }
+    Serial.println(F("SSD1306 allocation completed"));
+
+    display.display();
+    delay(2000); // Pause for 2 seconds
+
+    // Clear the buffer
+    display.clearDisplay();
+
+    screen_mode_1();
 }
 
 void loop() {
@@ -53,3 +99,53 @@ void loop() {
         loop_counter = 0;
     }
 }
+
+// divide the screen into 2 parts into 13 zones to show data
+void screen_mode_1(){
+
+    // // Serial.println("[INFO] screen mode 1");
+    // // auto new line 
+    display.clearDisplay();
+    display.setTextSize(1);                 // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);    // Draw white text
+    display.setCursor(0,0);                 // Start at top-left corner
+    display.cp437(true);                    // Use full 256 char 'Code Page 437' font
+
+    float values[] = {
+        debug_float_1, debug_float_2, debug_float_3, debug_float_4, debug_float_5,
+        debug_float_6, debug_float_7, debug_float_8, debug_float_9, debug_float_10,
+        debug_float_11, debug_float_12, debug_float_13, debug_float_14, debug_float_15, debug_float_16
+    };
+
+    for (int i = 0; i < 16; i++) {
+        String str = String(values[i], 3);  // 保留 3 位小数
+
+        // 补空格，右对齐，总长 10
+        while (str.length() < 10) {
+            str = " " + str;
+        }
+
+        for (int j = 0; j < 10; j++) {
+            display.write(str[j]);
+        }
+
+        if (i%2 == 0) {
+            display.write('|');
+        }
+    }
+    display.display();
+    delay(10); // what is this delay for?
+
+}
+
+// // mode 2: Radar map, has anyone seen Dragon Ball?
+// void screen_mode_2(){
+// }
+
+// // mode 3: Show obstacles around the robot
+// void screen_mode_3(){
+// }
+
+// // mode 4: Smile for me, along with a series of animations
+// void screen_mode_4(){
+// }
