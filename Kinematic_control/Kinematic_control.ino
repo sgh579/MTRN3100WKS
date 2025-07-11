@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
-MPU6050 mpu(Wire);
+
 
 #define EN_1_A 2 //These are the pins for the PCB encoder
 #define EN_1_B 7 //These are the pins for the PCB encoder
@@ -27,23 +27,25 @@ mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); //TASK1 TODO: IDENTIFY THE
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+MPU6050 mpu(Wire);
+
 // Mode 1: Show data on the screen
-static float debug_float_1 = 123;
-static float debug_float_2 = 456;
-static float debug_float_3 = 789.123;
-static float debug_float_4 = 4;
-static float debug_float_5 = 5;
-static float debug_float_6 = 6;
-static float debug_float_7 = 7;
-static float debug_float_8 = 8;
-static float debug_float_9 = 9;
-static float debug_float_10 = 10;
-static float debug_float_11 = 11;
-static float debug_float_12 = 12;
-static float debug_float_13 = 13;
-static float debug_float_14 = 14;
-static float debug_float_15 = 15;
-static float debug_float_16 = 16;
+static float debug_float_1 = 0;
+static float debug_float_2 = 0;
+static float debug_float_3 = 0;
+static float debug_float_4 = 0;
+static float debug_float_5 = 0;
+static float debug_float_6 = 0;
+static float debug_float_7 = 0;
+static float debug_float_8 = 0;
+static float debug_float_9 = 0;
+static float debug_float_10 = 0;
+static float debug_float_11 = 0;
+static float debug_float_12 = 0;
+static float debug_float_13 = 0;
+static float debug_float_14 = 0;
+static float debug_float_15 = 0;
+static float debug_float_16 = 0;
 
 float* values[] = {
     &debug_float_1, &debug_float_2, &debug_float_3, &debug_float_4,
@@ -95,10 +97,11 @@ void loop() {
     delay(5);
 
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-
     mpu.update();
 
-
+    // debug_float_2 = mpu.getAngleX();
+    // debug_float_3 = mpu.getAngleY();
+    // debug_float_4 = mpu.getAngleZ();
 
     if (loop_counter % 10 == 0) {
         Serial.print("[INFO]: Loop count");
