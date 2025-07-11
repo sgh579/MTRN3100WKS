@@ -92,7 +92,7 @@ void setup() {
 
 void loop() {
 
-    delay(50);
+    delay(5);
 
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
 
@@ -106,18 +106,25 @@ void loop() {
         Serial.println();
     }
 
+
+
     loop_counter++;
     debug_float_1 = loop_counter;
 
-    if (loop_counter > 60000) {
+    if (loop_counter > 30000) {
         Serial.println("[INFO]: Loop count exceeded 60000, resetting to 0.");
         loop_counter = 0;
     }
 
-    screen_mode_1();
+    if (loop_counter % 1000 == 0) {
+            Serial.println("[INFO]: screen mode 1 triggered");
+            screen_mode_1();
+    }
+
 }
 
 // divide the screen into 2 parts into 13 zones to show data
+// it takes around 100ms
 void screen_mode_1(){
 
     // // Serial.println("[INFO] screen mode 1");
@@ -128,20 +135,17 @@ void screen_mode_1(){
     display.setCursor(0,0);                 // Start at top-left corner
     display.cp437(true);                    // Use full 256 char 'Code Page 437' font
 
-    String str;
-    for (int i = 0; i < 16; i++) {
-        str = String(*values[i], 3);  // 保留 3 位小数
+    
+    char temp[16];  // 足够放下 10 字符 + 结束符
 
-        // 补空格，右对齐，总长 10
-        while (str.length() < 10) {
-            str = " " + str;
-        }
+    for (int i = 0; i < 16; i++) {
+        dtostrf(*values[i], 10, 3, temp);  // 直接右对齐，总长度10
 
         for (int j = 0; j < 10; j++) {
-            display.write(str[j]);
+            display.write(temp[j]);
         }
 
-        if (i%2 == 0) {
+        if (i % 2 == 0) {
             display.write('|');
         }
     }
