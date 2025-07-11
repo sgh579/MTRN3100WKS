@@ -28,22 +28,29 @@ mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); //TASK1 TODO: IDENTIFY THE
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Mode 1: Show data on the screen
-float debug_float_1 = 123;
-float debug_float_2 = 456;
-float debug_float_3 = 789.123;
-float debug_float_4 = 4;
-float debug_float_5 = 5;
-float debug_float_6 = 6;
-float debug_float_7 = 7;
-float debug_float_8 = 8;
-float debug_float_9 = 9;
-float debug_float_10 = 10;
-float debug_float_11 = 11;
-float debug_float_12 = 12;
-float debug_float_13 = 13;
-float debug_float_14 = 14;
-float debug_float_15 = 15;
-float debug_float_16 = 16;
+static float debug_float_1 = 123;
+static float debug_float_2 = 456;
+static float debug_float_3 = 789.123;
+static float debug_float_4 = 4;
+static float debug_float_5 = 5;
+static float debug_float_6 = 6;
+static float debug_float_7 = 7;
+static float debug_float_8 = 8;
+static float debug_float_9 = 9;
+static float debug_float_10 = 10;
+static float debug_float_11 = 11;
+static float debug_float_12 = 12;
+static float debug_float_13 = 13;
+static float debug_float_14 = 14;
+static float debug_float_15 = 15;
+static float debug_float_16 = 16;
+
+float* values[] = {
+    &debug_float_1, &debug_float_2, &debug_float_3, &debug_float_4,
+    &debug_float_5, &debug_float_6, &debug_float_7, &debug_float_8,
+    &debug_float_9, &debug_float_10, &debug_float_11, &debug_float_12,
+    &debug_float_13, &debug_float_14, &debug_float_15, &debug_float_16
+};
 
 int loop_counter = 0;
 
@@ -75,7 +82,12 @@ void setup() {
     // Clear the buffer
     display.clearDisplay();
 
+    
+
+    
+    // delay(50);  // 模拟
     screen_mode_1();
+
 }
 
 void loop() {
@@ -93,11 +105,16 @@ void loop() {
         Serial.print(loop_counter);
         Serial.println();
     }
+
     loop_counter++;
+    debug_float_1 = loop_counter;
+
     if (loop_counter > 60000) {
         Serial.println("[INFO]: Loop count exceeded 60000, resetting to 0.");
         loop_counter = 0;
     }
+
+    screen_mode_1();
 }
 
 // divide the screen into 2 parts into 13 zones to show data
@@ -111,14 +128,9 @@ void screen_mode_1(){
     display.setCursor(0,0);                 // Start at top-left corner
     display.cp437(true);                    // Use full 256 char 'Code Page 437' font
 
-    float values[] = {
-        debug_float_1, debug_float_2, debug_float_3, debug_float_4, debug_float_5,
-        debug_float_6, debug_float_7, debug_float_8, debug_float_9, debug_float_10,
-        debug_float_11, debug_float_12, debug_float_13, debug_float_14, debug_float_15, debug_float_16
-    };
-
+    String str;
     for (int i = 0; i < 16; i++) {
-        String str = String(values[i], 3);  // 保留 3 位小数
+        str = String(*values[i], 3);  // 保留 3 位小数
 
         // 补空格，右对齐，总长 10
         while (str.length() < 10) {
