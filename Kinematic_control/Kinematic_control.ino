@@ -7,6 +7,8 @@
 #include <Adafruit_SSD1306.h>
 #include <string.h>
 #include <stdio.h>
+#include "PIDController.hpp"
+#include "Motor.hpp"
 
 
 
@@ -14,6 +16,10 @@
 #define EN_1_B 7 //These are the pins for the PCB encoder
 #define EN_2_A 3 //These are the pins for the PCB encoder
 #define EN_2_B 8 //These are the pins for the PCB encoder
+#define MOT1PWM 11 // PIN 11 is motor1's PWM pin
+#define MOT1DIR 12
+#define MOT2PWM 9// PIN 9 is motor2's PWM pin
+#define MOT2DIR 10
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -21,7 +27,16 @@
 #define SCREEN_ADDRESS 0x3C
 
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
-mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); //TASK1 TODO: IDENTIFY THE WHEEL RADIUS AND AXLE LENGTH
+mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
+
+mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
+mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
+
+mtrn3100::PIDController yaw_controller(0.05, 0.1, 0);
+
+// TODO: create a struct for this, avoid using 2 separate motor objects
+mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
+mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 
 /*************** SCREEN *******************/
 
@@ -29,32 +44,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 MPU6050 mpu(Wire);
 
-// Mode 1: Show data on the screen
-static float debug_float_1 = 0;
-static float debug_float_2 = 0;
-static float debug_float_3 = 0;
-static float debug_float_4 = 0;
-static float debug_float_5 = 0;
-static float debug_float_6 = 0;
-static float debug_float_7 = 0;
-static float debug_float_8 = 0;
-static float debug_float_9 = 0;
-static float debug_float_10 = 0;
-static float debug_float_11 = 0;
-static float debug_float_12 = 0;
-static float debug_float_13 = 0;
-static float debug_float_14 = 0;
-static float debug_float_15 = 0;
-static float debug_float_16 = 0;
-
-float* values[] = {
-    &debug_float_1, &debug_float_2, &debug_float_3, &debug_float_4,
-    &debug_float_5, &debug_float_6, &debug_float_7, &debug_float_8,
-    &debug_float_9, &debug_float_10, &debug_float_11, &debug_float_12,
-    &debug_float_13, &debug_float_14, &debug_float_15, &debug_float_16
-};
-
 int loop_counter = 0;
+
+static float target_motion_rotation_radians = 0;
 
 void setup() {
     Serial.begin(115200);
@@ -71,100 +63,67 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    // screen
-    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-        Serial.println(F("SSD1306 allocation failed"));
-        for(;;); // Don't proceed, loop forever
-    }
-    Serial.println(F("SSD1306 allocation completed"));
+    float target_motion_length = 100; // 1000 mm, specified by task4
+    float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
+    float r = 15.5;
+    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
-    display.display();
-    delay(2000); // Pause for 2 seconds
+    // target_motion_rotation_radians = 2.0f * M_PIF;
 
-    // Clear the buffer
-    display.clearDisplay();
+    motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
+    motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 
-    
-
-    
-    // delay(50);  // 模拟
-    screen_mode_1();
+    yaw_controller.zeroAndSetTarget(0, 0);
 
 }
 
 void loop() {
 
-    delay(5);
-
+    // Read the sensors
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
 
-    // debug_float_2 = mpu.getAngleX();
-    // debug_float_3 = mpu.getAngleY();
-    // debug_float_4 = mpu.getAngleZ();
+    float current_angle_z = mpu.getAngleZ();
 
-    if (loop_counter % 10 == 0) {
-        Serial.print("[INFO]: Loop count");
-        Serial.print(loop_counter);
-        Serial.println();
-    }
+    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
+
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+
+    int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
+    int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
 
 
+    int speed1 = motor1_encoder_position_controller_output;
+    int speed2 = motor2_encoder_position_controller_output;
+
+    motor1.setPWM(motor1_encoder_position_controller_output); 
+    motor2.setPWM(motor2_encoder_position_controller_output); 
+
+    Serial.print(F("*****************************************loop "));
+    Serial.print(loop_counter);
+    Serial.println(F("*****************************************"));
+    Serial.print(F("[INFO] angle Z: "));
+    Serial.println(current_angle_z);
+    Serial.print(F("[INFO] yaw_controller_output: "));
+    Serial.println(yaw_controller_output);
+    Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
+    Serial.println(motor1_encoder_position_controller_output);
+    Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
+    Serial.println(motor2_encoder_position_controller_output);
+
+    Serial.print(F("[INFO] Encoder left radian: "));
+    Serial.println(encoder.getLeftRotation());
+    Serial.print(F("[INFO] Encoder right radian: "));
+    Serial.println(encoder.getRightRotation());
 
     loop_counter++;
-    debug_float_1 = loop_counter;
 
     if (loop_counter > 30000) {
-        Serial.println("[INFO]: Loop count exceeded 60000, resetting to 0.");
+        // Serial.println("[INFO]: Loop count exceeded 30000, resetting to 0.");
         loop_counter = 0;
     }
 
-    if (loop_counter % 1000 == 0) {
-            Serial.println("[INFO]: screen mode 1 triggered");
-            screen_mode_1();
-    }
+    delay(5);
 
 }
-
-// divide the screen into 2 parts into 13 zones to show data
-// it takes around 100ms
-void screen_mode_1(){
-
-    // // Serial.println("[INFO] screen mode 1");
-    // // auto new line 
-    display.clearDisplay();
-    display.setTextSize(1);                 // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);    // Draw white text
-    display.setCursor(0,0);                 // Start at top-left corner
-    display.cp437(true);                    // Use full 256 char 'Code Page 437' font
-
-    
-    char temp[16];  // 足够放下 10 字符 + 结束符
-
-    for (int i = 0; i < 16; i++) {
-        dtostrf(*values[i], 10, 3, temp);  // 直接右对齐，总长度10
-
-        for (int j = 0; j < 10; j++) {
-            display.write(temp[j]);
-        }
-
-        if (i % 2 == 0) {
-            display.write('|');
-        }
-    }
-    display.display();
-    delay(10); // what is this delay for?
-
-}
-
-// // mode 2: Radar map, has anyone seen Dragon Ball?
-// void screen_mode_2(){
-// }
-
-// // mode 3: Show obstacles around the robot
-// void screen_mode_3(){
-// }
-
-// // mode 4: Smile for me, along with a series of animations
-// void screen_mode_4(){
-// }

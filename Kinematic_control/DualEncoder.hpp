@@ -23,14 +23,14 @@ public:
     void readLeftEncoder() {
         noInterrupts();
         direction = digitalRead(mot1_dir) ? 1 : -1;
-        l_count += direction;
+        l_count -= direction;
         interrupts();
     }
     
     void readRightEncoder() {
         noInterrupts();
         direction = digitalRead(mot2_dir) ? 1 : -1;
-        r_count += direction;
+        r_count -= direction;
         interrupts();
     }
 
