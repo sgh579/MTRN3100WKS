@@ -27,7 +27,7 @@
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
 
-#define EXECUTE_MOTION false
+#define EXECUTE_MOTION true
 
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
@@ -36,6 +36,7 @@ mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
 mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
 
 mtrn3100::PIDController yaw_controller(0.05, 0.1, 0);
+mtrn3100::PIDController front_lidar_distance_controller(0.05, 0.01, 0.1);
 
 // TODO: create a struct for this, avoid using 2 separate motor objects
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
@@ -90,6 +91,8 @@ void setup() {
 
     yaw_controller.zeroAndSetTarget(0, 0);
 
+    front_lidar_distance_controller.zeroAndSetTarget(0, 100);
+
 }
 
 void loop() {
@@ -98,16 +101,22 @@ void loop() {
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
 
-    float current_angle_z = mpu.getAngleZ();
+    //Yaw control
+    // float current_angle_z = mpu.getAngleZ();
 
-    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
+    // float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+    // motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
+    // motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+
+    // Lidar control
+    int current_distance = sensor2.readRangeSingleMillimeters();
+    float front_lidar_distance_controller_output = front_lidar_distance_controller.compute(current_distance);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - front_lidar_distance_controller_output);
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians + front_lidar_distance_controller_output);
 
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
-
 
     int speed1 = motor1_encoder_position_controller_output;
     int speed2 = motor2_encoder_position_controller_output;
@@ -120,10 +129,10 @@ void loop() {
     Serial.print(F("*****************************************loop "));
     Serial.print(loop_counter);
     Serial.println(F("*****************************************"));
-    Serial.print(F("[INFO] angle Z: "));
-    Serial.println(current_angle_z);
-    Serial.print(F("[INFO] yaw_controller_output: "));
-    Serial.println(yaw_controller_output);
+    // Serial.print(F("[INFO] angle Z: "));
+    // Serial.println(current_angle_z);
+    // Serial.print(F("[INFO] yaw_controller_output: "));
+    // Serial.println(yaw_controller_output);
     Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
     Serial.println(motor1_encoder_position_controller_output);
     Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
