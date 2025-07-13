@@ -1,5 +1,7 @@
 #pragma once
 
+#define MAXM_SPEED 100
+
 #include <Arduino.h>
 
 #include "math.h"
@@ -26,9 +28,9 @@ public:
       // Output digital direction pin based on if input signal is positive or negative.
       // Output PWM signal between 0 - 255.
       int speed = abs(pwm);
-      if (speed > 255)
+      if (speed > MAXM_SPEED)
       {
-        speed = 255;
+        speed = MAXM_SPEED;
       }
       analogWrite(pwm_pin, speed); // Write the absolute value of pwm to the PWM pin
       digitalWrite(dir_pin, pwm >= 0 ? HIGH : LOW); // Set direction pin

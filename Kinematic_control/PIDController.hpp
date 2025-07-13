@@ -48,6 +48,11 @@ public:
         setpoint = target;
     }
 
+    void setTarget(float target)
+    {
+        setpoint = target;
+    }
+
 public:
     uint32_t prev_time, curr_time = micros();
     float dt;

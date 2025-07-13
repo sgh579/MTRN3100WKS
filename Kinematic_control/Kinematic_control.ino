@@ -32,6 +32,8 @@ mtrn3100::EncoderOdometry encoder_odometry(15.5, 82);
 mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
 mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
 
+mtrn3100::PIDController yaw_controller(0.05, 0.1, 0);
+
 // TODO: create a struct for this, avoid using 2 separate motor objects
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
@@ -43,6 +45,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
 
 int loop_counter = 0;
+
+static float target_motion_rotation_radians = 0;
 
 void setup() {
     Serial.begin(115200);
@@ -59,15 +63,17 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    float target_motion_length = 200; // 1000 mm, specified by task4
+    float target_motion_length = 100; // 1000 mm, specified by task4
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
     float r = 15.5;
-    float target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
+    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
     // target_motion_rotation_radians = 2.0f * M_PIF;
 
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
+
+    yaw_controller.zeroAndSetTarget(0, 0);
 
 }
 
@@ -77,16 +83,30 @@ void loop() {
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
 
-    Serial.print(F("[INFO] angle Z: "));
-    Serial.println(mpu.getAngleZ());
+    float current_angle_z = mpu.getAngleZ();
 
+    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
 
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+
+
+    int speed1 = motor1_encoder_position_controller_output;
+    int speed2 = motor2_encoder_position_controller_output;
+
     motor1.setPWM(motor1_encoder_position_controller_output); 
     motor2.setPWM(motor2_encoder_position_controller_output); 
 
+    Serial.print(F("*****************************************loop "));
+    Serial.print(loop_counter);
+    Serial.println(F("*****************************************"));
+    Serial.print(F("[INFO] angle Z: "));
+    Serial.println(current_angle_z);
+    Serial.print(F("[INFO] yaw_controller_output: "));
+    Serial.println(yaw_controller_output);
     Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
     Serial.println(motor1_encoder_position_controller_output);
     Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
@@ -96,13 +116,6 @@ void loop() {
     Serial.println(encoder.getLeftRotation());
     Serial.print(F("[INFO] Encoder right radian: "));
     Serial.println(encoder.getRightRotation());
-
-    // deal with loop count
-    // if (loop_counter % 10 == 0) {
-    //     Serial.print("[INFO]: Loop count");
-    //     Serial.print(loop_counter);
-    //     Serial.println();
-    // }
 
     loop_counter++;
 
@@ -114,4 +127,3 @@ void loop() {
     delay(5);
 
 }
-
