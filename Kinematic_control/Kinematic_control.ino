@@ -29,31 +29,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 MPU6050 mpu(Wire);
 
-// Mode 1: Show data on the screen
-static float debug_float_1 = 0;
-static float debug_float_2 = 0;
-static float debug_float_3 = 0;
-static float debug_float_4 = 0;
-static float debug_float_5 = 0;
-static float debug_float_6 = 0;
-static float debug_float_7 = 0;
-static float debug_float_8 = 0;
-static float debug_float_9 = 0;
-static float debug_float_10 = 0;
-static float debug_float_11 = 0;
-static float debug_float_12 = 0;
-static float debug_float_13 = 0;
-static float debug_float_14 = 0;
-static float debug_float_15 = 0;
-static float debug_float_16 = 0;
-
-float* values[] = {
-    &debug_float_1, &debug_float_2, &debug_float_3, &debug_float_4,
-    &debug_float_5, &debug_float_6, &debug_float_7, &debug_float_8,
-    &debug_float_9, &debug_float_10, &debug_float_11, &debug_float_12,
-    &debug_float_13, &debug_float_14, &debug_float_15, &debug_float_16
-};
-
 int loop_counter = 0;
 
 void setup() {
@@ -84,12 +59,6 @@ void setup() {
     // Clear the buffer
     display.clearDisplay();
 
-    
-
-    
-    // delay(50);  // 模拟
-    screen_mode_1();
-
 }
 
 void loop() {
@@ -99,9 +68,7 @@ void loop() {
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
 
-    // debug_float_2 = mpu.getAngleX();
-    // debug_float_3 = mpu.getAngleY();
-    // debug_float_4 = mpu.getAngleZ();
+    Serial.println(mpu.getAngleZ());
 
     if (loop_counter % 10 == 0) {
         Serial.print("[INFO]: Loop count");
@@ -112,59 +79,11 @@ void loop() {
 
 
     loop_counter++;
-    debug_float_1 = loop_counter;
 
     if (loop_counter > 30000) {
-        Serial.println("[INFO]: Loop count exceeded 60000, resetting to 0.");
+        Serial.println("[INFO]: Loop count exceeded 30000, resetting to 0.");
         loop_counter = 0;
     }
 
-    if (loop_counter % 1000 == 0) {
-            Serial.println("[INFO]: screen mode 1 triggered");
-            screen_mode_1();
-    }
-
 }
 
-// divide the screen into 2 parts into 13 zones to show data
-// it takes around 100ms
-void screen_mode_1(){
-
-    // // Serial.println("[INFO] screen mode 1");
-    // // auto new line 
-    display.clearDisplay();
-    display.setTextSize(1);                 // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);    // Draw white text
-    display.setCursor(0,0);                 // Start at top-left corner
-    display.cp437(true);                    // Use full 256 char 'Code Page 437' font
-
-    
-    char temp[16];  // 足够放下 10 字符 + 结束符
-
-    for (int i = 0; i < 16; i++) {
-        dtostrf(*values[i], 10, 3, temp);  // 直接右对齐，总长度10
-
-        for (int j = 0; j < 10; j++) {
-            display.write(temp[j]);
-        }
-
-        if (i % 2 == 0) {
-            display.write('|');
-        }
-    }
-    display.display();
-    delay(10); // what is this delay for?
-
-}
-
-// // mode 2: Radar map, has anyone seen Dragon Ball?
-// void screen_mode_2(){
-// }
-
-// // mode 3: Show obstacles around the robot
-// void screen_mode_3(){
-// }
-
-// // mode 4: Smile for me, along with a series of animations
-// void screen_mode_4(){
-// }
