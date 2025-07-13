@@ -32,11 +32,11 @@
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 
-mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
-mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
+mtrn3100::PIDController motor1_encoder_position_controller(1, 0.01, 0);
+mtrn3100::PIDController motor2_encoder_position_controller(1, 0.01, 0);
 
 mtrn3100::PIDController yaw_controller(0.05, 0.1, 0);
-mtrn3100::PIDController front_lidar_distance_controller(0.05, 0.01, 0.1);
+mtrn3100::PIDController front_lidar_distance_controller(7, 0.01, 0);
 
 // TODO: create a struct for this, avoid using 2 separate motor objects
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);

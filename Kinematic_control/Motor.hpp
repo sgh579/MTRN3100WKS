@@ -1,6 +1,6 @@
 #pragma once
 
-#define MAXM_SPEED 100
+#define MAXM_SPEED 50
 
 #include <Arduino.h>
 
