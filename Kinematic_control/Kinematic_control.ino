@@ -63,7 +63,7 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    float target_motion_length = 100; // 1000 mm, specified by task4
+    float target_motion_length = 0; // 1000 mm, specified by task4
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
     float r = 15.5;
     target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
@@ -73,7 +73,7 @@ void setup() {
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 
-    yaw_controller.zeroAndSetTarget(0, 0);
+    yaw_controller.zeroAndSetTarget(0, 90);
 
 }
 
