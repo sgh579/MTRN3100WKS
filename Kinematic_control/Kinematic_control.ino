@@ -5,6 +5,7 @@
 #include <MPU6050_light.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <VL6180X.h>
 #include <string.h>
 #include <stdio.h>
 #include "PIDController.hpp"
@@ -26,6 +27,8 @@
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
 
+#define EXECUTE_MOTION false
+
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 
@@ -44,6 +47,14 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 MPU6050 mpu(Wire);
 
+VL6180X sensor1; // left
+VL6180X sensor2; // front
+VL6180X sensor3; // right
+
+int sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
+int sensor2_pin = A1; // ENABLE PIN FOR SENSOR 2 41
+int sensor3_pin = A2; // ENABLE PIN FOR SENSOR 3 42
+
 int loop_counter = 0;
 
 static float target_motion_rotation_radians = 0;
@@ -61,6 +72,10 @@ void setup() {
     Serial.println(F("Calculating offsets, do not move MPU6050"));
     delay(1000);
     mpu.calcOffsets(true,true);
+    Serial.println("Done!\n");
+
+    Serial.println(F("Initializing lidar sensors..."));
+    lidarInitialize();
     Serial.println("Done!\n");
 
     float target_motion_length = 100; // 1000 mm, specified by task4
@@ -97,9 +112,11 @@ void loop() {
     int speed1 = motor1_encoder_position_controller_output;
     int speed2 = motor2_encoder_position_controller_output;
 
-    motor1.setPWM(motor1_encoder_position_controller_output); 
-    motor2.setPWM(motor2_encoder_position_controller_output); 
-
+    if (EXECUTE_MOTION) {
+        motor1.setPWM(motor1_encoder_position_controller_output); 
+        motor2.setPWM(motor2_encoder_position_controller_output); 
+    }
+    
     Serial.print(F("*****************************************loop "));
     Serial.print(loop_counter);
     Serial.println(F("*****************************************"));
@@ -117,6 +134,28 @@ void loop() {
     Serial.print(F("[INFO] Encoder right radian: "));
     Serial.println(encoder.getRightRotation());
 
+    Serial.println(F("[INFO] Lidar's data: "));
+    if (sensor1.timeoutOccurred()) {
+        Serial.print(F("TO!"));
+    } else {
+        Serial.print(sensor1.readRangeSingleMillimeters());
+    }
+    Serial.print(" | ");
+    if (sensor2.timeoutOccurred()) {
+        Serial.print(F("TO!"));
+    } else {
+        Serial.print(sensor2.readRangeSingleMillimeters());
+    }
+    Serial.print(" | ");
+    if (sensor3.timeoutOccurred()) {
+        Serial.print(F("TO!"));
+    } else {
+        Serial.print(sensor3.readRangeSingleMillimeters());
+    }
+    Serial.println();
+    
+    
+
     loop_counter++;
 
     if (loop_counter > 30000) {
@@ -126,4 +165,41 @@ void loop() {
 
     delay(5);
 
+}
+
+void lidarInitialize() {
+    // SET UP ENABLE PINS AND DISABLE SENSORS
+    pinMode(sensor1_pin, OUTPUT);
+    pinMode(sensor2_pin, OUTPUT);
+    pinMode(sensor3_pin, OUTPUT);
+    digitalWrite(sensor1_pin, LOW);
+    digitalWrite(sensor2_pin, LOW);
+    digitalWrite(sensor3_pin, LOW);
+
+    // ENABLE FIRST SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor1_pin, HIGH);
+    delay(50);
+    sensor1.init();
+    sensor1.configureDefault();
+    sensor1.setTimeout(250);
+    sensor1.setAddress(0x40);
+    delay(50);
+
+    // ENABLE SECOND SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor2_pin, HIGH);
+    delay(50);
+    sensor2.init();
+    sensor2.configureDefault();
+    sensor2.setTimeout(250);
+    sensor2.setAddress(0x41);
+    delay(50);
+
+    // ENABLE THIRD SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor3_pin, HIGH);
+    delay(50);
+    sensor3.init();
+    sensor3.configureDefault();
+    sensor3.setTimeout(250);
+    sensor3.setAddress(0x42);
+    delay(50);
 }
