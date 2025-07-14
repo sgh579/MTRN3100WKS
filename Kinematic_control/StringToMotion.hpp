@@ -6,10 +6,12 @@
 //#define ORIENTATIONFRAMEWORK_HPP
 //
 //#endif //ORIENTATIONFRAMEWORK_HPP
+// set up as a main file
 
 #pragma once
 
 #include <Arduino.h>
+
 
 String commandString = "";
 
@@ -20,13 +22,16 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available() > 0) {
-        commandString = Serial.readStringUntil('\n');
-        commandString.trim();  // Remove trailing newline/space
-        Serial.print("Received command: ");
-        Serial.println(commandString);
+    void loop() {
+        if (Serial.available() > 5) {        // # of char to be read fron input - made it > 5 as
+            //    we will recieve 8 movements
+            commandString = Serial.readStringUntil('\n');
+            commandString.trim();  // Remove trailing newline/space
+            Serial.print("Received command: ");
+            Serial.println(commandString);
 
-        executeCommands(commandString);
+            executeCommands(commandString);
+        }
     }
 }
 
