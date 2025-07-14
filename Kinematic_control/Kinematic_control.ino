@@ -65,7 +65,7 @@ void setup() {
 
     float target_motion_length = 0; // 1000 mm, specified by task4
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
-    float r = 15.5;
+    float r = 15.5; // radius?
     target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
     // target_motion_rotation_radians = 2.0f * M_PIF;

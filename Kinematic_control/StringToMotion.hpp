@@ -1,11 +1,6 @@
 //
 // Created by Naveen Thayyil on 13/7/2025.
 //
-
-//#ifndef ORIENTATIONFRAMEWORK_HPP
-//#define ORIENTATIONFRAMEWORK_HPP
-//
-//#endif //ORIENTATIONFRAMEWORK_HPP
 // set up as a main file
 
 #pragma once
@@ -50,7 +45,7 @@ void executeCommands(String commands) {
             break;
             default:
                 Serial.print("Invalid command: ");
-            Serial.println(c);
+                Serial.println(c);
             break;
         }
     }
@@ -58,8 +53,8 @@ void executeCommands(String commands) {
 
 // movement functions
 void moveForwardOneCell() {
-    float cellLength = 180.0f; // mm (example; measure it)
-    driveStraight(cellLength); // Your drive function
+    float cellLength = 180.0f; // mm
+    driveStraight(cellLength); // drive function
 }
 void turnLeft90() {
     rotateInPlace(-90); // Negative for CCW
