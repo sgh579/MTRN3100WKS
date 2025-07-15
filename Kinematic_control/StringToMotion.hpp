@@ -8,31 +8,26 @@
 #include <Arduino.h>
 
 
-String commandString = "";
+char commandString[9] = ""; // 9 accountingh for error
 
 void setup() {
     Serial.begin(9600);
-    while (!Serial) {}
-    Serial.println("Enter movement string:");
+//    while (!Serial) {}
 }
 
 void loop() {
-    void loop() {
-        if (Serial.available() > 5) {        // # of char to be read fron input - made it > 5 as
-            //    we will recieve 8 movements
-            commandString = Serial.readStringUntil('\n');
-            commandString.trim();  // Remove trailing newline/space
-            Serial.print("Received command: ");
-            Serial.println(commandString);
-
-            executeCommands(commandString);
-        }
+    if (commandString[0] != '\0') {
+        Serial.println(commandString);
+        executeCommands(commandString);
+    } else {
+      Serial.println("Completing other commands");
     }
+
 }
 
-void executeCommands(String commands) {
-    for (int i = 0; i < commands.length(); i++) {
-        char c = commands.charAt(i);
+void executeCommands(char* commands) {
+    for (int i = 0; commands[i] != '\0'; i++) {
+        char c = commands[i];
         switch (c) {
             case 'f':
                 moveForwardOneCell();
@@ -45,7 +40,7 @@ void executeCommands(String commands) {
             break;
             default:
                 Serial.print("Invalid command: ");
-                Serial.println(c);
+            Serial.println(c);
             break;
         }
     }
@@ -62,4 +57,11 @@ void turnLeft90() {
 
 void turnRight90() {
     rotateInPlace(90); // Positive for CW
+}
+
+bool motionComplete(float leftTarget, float rightTarget, float tolerance = 0.01) { // unsure on how to exactly implement it into the main function
+    float leftError = abs(leftTarget - encoder.getLeftRotation());
+    float rightError = abs(rightTarget - encoder.getRightRotation());
+
+    return leftError < tolerance && rightError < tolerance;
 }
