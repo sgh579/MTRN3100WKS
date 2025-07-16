@@ -73,7 +73,7 @@ void setup() {
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 
-    yaw_controller.zeroAndSetTarget(0, 90);
+    yaw_controller.zeroAndSetTarget(0, -90); // negative for CW
 
 }
 
