@@ -2,6 +2,9 @@
 
 #include <Arduino.h>
 
+// Add wheel radius constant (e.g., 15.5mm)
+const float wheel_radius_mm = 15.5f; // Replace with actual value if different
+
 namespace mtrn3100 {
 
 
@@ -41,6 +44,16 @@ public:
 
     float getRightRotation() {
         return (static_cast<float>(r_count) / counts_per_revolution ) * 2* PI;
+    }
+
+    // Converts left wheel rotation to distance in mm
+    float getLeftDistanceMM() {
+        return getLeftRotation() * wheel_radius_mm;
+    }
+
+    // Converts right wheel rotation to distance in mm
+    float getRightDistanceMM() {
+        return getRightRotation() * wheel_radius_mm;
     }
 
 private:
