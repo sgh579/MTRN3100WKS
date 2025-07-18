@@ -48,6 +48,8 @@ int loop_counter = 0;
 
 static float target_motion_rotation_radians = 0;
 
+bool motion_complete = false;
+
 void setup() {
     Serial.begin(115200);
     Wire.begin();
@@ -89,18 +91,32 @@ void loop() {
 
 //    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
+    if (!motion_complete) {
     motor1_encoder_position_controller.setTarget(target_motion_rotation_radians);
     motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians);
 
-    int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-    int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(-encoder.getRightRotation());
+    int motor1_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
+    int motor2_output = motor2_encoder_position_controller.compute(-encoder.getRightRotation());
 
+    motor1.setPWM(motor1_output);
+    motor2.setPWM(motor2_output);
+	}
 
-    int speed1 = motor1_encoder_position_controller_output;
-    int speed2 = motor2_encoder_position_controller_output;
+    if (!motion_complete &&
+    abs(encoder.getLeftRotation() - target_motion_rotation_radians) < 0.05 &&
+    abs(encoder.getRightRotation() + target_motion_rotation_radians) < 0.05) {
 
-    motor1.setPWM(motor1_encoder_position_controller_output); 
-    motor2.setPWM(motor2_encoder_position_controller_output); 
+    // Stop both motors
+    motor1.setPWM(0);
+    motor2.setPWM(0);
+
+    // Optional: lock the PID controller at last position
+    motor1_encoder_position_controller.setTarget(encoder.getLeftRotation());
+    motor2_encoder_position_controller.setTarget(-encoder.getRightRotation());
+
+    motion_complete = true;
+    Serial.println("[INFO] Motion complete — both motors stopped.");
+	}
 
     Serial.print(F("*****************************************loop "));
     Serial.print(loop_counter);
