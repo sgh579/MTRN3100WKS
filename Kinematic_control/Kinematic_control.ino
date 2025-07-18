@@ -56,7 +56,7 @@ enum MotionState {
     TURNING_RIGHT
 };
 
-MotionState currentMotion = IDLE;
+MotionState currentMotion = MOVING_FORWARD;
 
 float motion_target_distance_mm = 0;
 float motion_target_rotation_deg = 0;
@@ -178,4 +178,9 @@ void turnRight90() {
     currentMotion = TURNING_RIGHT;
     motion_target_rotation_deg = -90.0;
     motion_start_yaw = mpu.getAngleZ();
+}
+
+void stopMotors() {
+    motor1.setPWM(0);
+    motor2.setPWM(0);
 }
