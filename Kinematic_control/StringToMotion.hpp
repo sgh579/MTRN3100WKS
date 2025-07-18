@@ -8,11 +8,11 @@
 #include <Arduino.h>
 
 
-char commandString[9] = ""; // 9 accountingh for error
+char commandString[9] = ""; // 9 accounting for error
 
 void setup() {
     Serial.begin(9600);
-//    while (!Serial) {}
+    //    while (!Serial) {}
 }
 
 void loop() {
@@ -22,7 +22,6 @@ void loop() {
     } else {
       Serial.println("Completing other commands");
     }
-
 }
 
 void executeCommands(char* commands) {

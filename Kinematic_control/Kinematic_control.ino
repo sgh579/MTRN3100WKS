@@ -26,6 +26,10 @@
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
 
+#define SIZE 8
+
+#define CELL_SIZE 180
+
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 
@@ -45,6 +49,14 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
 
 int loop_counter = 0;
+bool first = true;
+
+int cmd_ctr = 0;
+char commands[9] = "flrflrfl";
+
+float old_x = 0; 
+float old_y = 0; 
+float old_angle = 0; 
 
 static float target_motion_rotation_radians = 0;
 
@@ -63,39 +75,50 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    float target_motion_length = 0; // 1000 mm, specified by task4
-    float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
-    float r = 15.5; // radius?
-    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
-
     // target_motion_rotation_radians = 2.0f * M_PIF;
 
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 
-    yaw_controller.zeroAndSetTarget(0, 90);
+    yaw_controller.zeroAndSetTarget(0, 0);
 
 }
 
 void loop() {
+    // Take next instruction
+    if (first || checkCompletedCommand()) {
+        first = false;
 
-    // Read the sensors
-    encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
-    mpu.update();
+        // Stop if there are no more instructions 
+        while (cmd_ctr >= SIZE) {}
 
-    float current_angle_z = mpu.getAngleZ();
+        // TODO: Record current state
 
-    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+        // Set targets
+        char c = commands[cmd_ctr];
+        switch (c) {
+            case 'f':
+                yaw_controller.zeroAndSetTarget(180, 0);
+            break;
+            case 'l':
+                yaw_controller.zeroAndSetTarget(0, 90);
+            break;
+            case 'r':
+                yaw_controller.zeroAndSetTarget(0, -90);
+            break;
+            default:
+                Serial.print("Invalid command: ");
+                Serial.println(c);
+            break;
+        }
 
+        cmd_ctr++;
+    }
+
+    // Move motors
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
-
-
-    int speed1 = motor1_encoder_position_controller_output;
-    int speed2 = motor2_encoder_position_controller_output;
 
     motor1.setPWM(motor1_encoder_position_controller_output); 
     motor2.setPWM(motor2_encoder_position_controller_output); 
@@ -124,6 +147,47 @@ void loop() {
         loop_counter = 0;
     }
 
+    first = false;
+
     delay(5);
 
+}
+
+// TODO: Checks if the current command has been completed
+bool checkCompletedCommand() {
+    char curr_cmd = commands[cmd_ctr - 1];
+
+    if (curr_cmd == 'f') {
+        // TODO: MAY NEED TO ADJUST VARIANCE
+        return abs(old_x - curr_x) > CELL_SIZE || abs(old_y - curr_y) > CELL_SIZE
+    } else if (curr_cmd == 'l') {
+        
+    } else if (curr_cmd == 'r') {
+
+    }
+
+    return false; 
+}
+
+void setTargets(float target_distance, float angle) {
+    // Read the sensors
+    encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
+    mpu.update();
+
+    float current_angle_z = mpu.getAngleZ();
+
+    // Calculate Targets
+    float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
+    float r = 15.5; // radius?
+    target_motion_rotation_radians = (target_distance * motion_length_to_rotation_scale) / r;
+
+    motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
+    motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians);
+
+    yaw_controller.zeroAndSetTarget(0, angle);
+
+    float yaw_controller_output = yaw_controller.compute(current_angle_z);
+
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
 }
