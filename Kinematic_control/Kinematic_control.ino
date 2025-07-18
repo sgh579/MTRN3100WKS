@@ -65,13 +65,15 @@ void setup() {
 
     float target_motion_length = 0; // 1000 mm, specified by task4
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
-    float r = 15.5;
-    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
+    float r = 15.5; // wheel radius
+    float target_motion_length = 180.0; // mm
+    float target_motion_rotation_radians = target_motion_length / r;
+//    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
     // target_motion_rotation_radians = 2.0f * M_PIF;
 
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
-    motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
+    motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), target_motion_rotation_radians); // reverse it for vehicle's motion
 
     yaw_controller.zeroAndSetTarget(0, -90); // negative for CW
 
@@ -85,10 +87,10 @@ void loop() {
 
     float current_angle_z = mpu.getAngleZ();
 
-    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
+//    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians);
+    motor2_encoder_position_controller.setTarget(target_motion_rotation_radians);
 
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
@@ -123,6 +125,12 @@ void loop() {
         // Serial.println("[INFO]: Loop count exceeded 30000, resetting to 0.");
         loop_counter = 0;
     }
+
+    if (abs(encoder.getLeftRotation() - target_motion_rotation_radians) < 0.1 &&
+    abs(encoder.getRightRotation() - target_motion_rotation_radians) < 0.1) {
+    motor1.setPWM(0);
+    motor2.setPWM(0);
+	}
 
     delay(5);
 
