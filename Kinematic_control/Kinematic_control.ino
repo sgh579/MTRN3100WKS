@@ -63,11 +63,11 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    float target_motion_length = 0; // 1000 mm, specified by task4
+    // float target_motion_length = 0; // 1000 mm, specified by task4
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
     float r = 15.5; // wheel radius
     float target_motion_length = 180.0; // mm
-    float target_motion_rotation_radians = target_motion_length / r;
+    target_motion_rotation_radians = target_motion_length / r;
 //    target_motion_rotation_radians = (target_motion_length * motion_length_to_rotation_scale) / r  ;
 
     // target_motion_rotation_radians = 2.0f * M_PIF;
@@ -107,8 +107,8 @@ void loop() {
     Serial.println(F("*****************************************"));
     Serial.print(F("[INFO] angle Z: "));
     Serial.println(current_angle_z);
-    Serial.print(F("[INFO] yaw_controller_output: "));
-    Serial.println(yaw_controller_output);
+    // Serial.print(F("[INFO] yaw_controller_output: "));
+    // Serial.println(yaw_controller_output);
     Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
     Serial.println(motor1_encoder_position_controller_output);
     Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
