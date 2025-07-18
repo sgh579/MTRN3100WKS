@@ -90,10 +90,10 @@ void loop() {
 //    float yaw_controller_output =  yaw_controller.compute(current_angle_z);
 
     motor1_encoder_position_controller.setTarget(target_motion_rotation_radians);
-    motor2_encoder_position_controller.setTarget(target_motion_rotation_radians);
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians);
 
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-    int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+    int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(-encoder.getRightRotation());
 
 
     int speed1 = motor1_encoder_position_controller_output;
