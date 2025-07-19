@@ -143,6 +143,11 @@ void loop() {
             }
 
             cmd_ctr++;
+            if (cmd_ctr >= SIZE) {
+    			motor1.setPWM(0);
+    			motor2.setPWM(0);
+    			return; // or enter idle state
+			}
         }
     }
 
