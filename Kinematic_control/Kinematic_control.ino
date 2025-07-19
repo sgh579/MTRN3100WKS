@@ -48,7 +48,7 @@ MPU6050 mpu(Wire);
 
 int loop_counter = 0;
 int cmd_ctr = 0;
-char commands[9] = "r"; 
+char commands[9] = "lfl"; 
 
 float old_x = 0, old_y = 0;
 float curr_x = 0, curr_y = 0;
@@ -152,7 +152,7 @@ void loop() {
 
                     // float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-                    motor1_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+                    motor1_encoder_position_controller.setTarget(-target_motion_rotation_radians + yaw_controller_output);
                     motor2_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
 
                     // Move motors
