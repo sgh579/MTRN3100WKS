@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "PIDController.hpp"
 #include "Motor.hpp"
+#include <math.h> 
 
 
 
@@ -25,8 +26,6 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
-
-#define SIZE 8
 
 #define CELL_SIZE 180
 
@@ -51,7 +50,7 @@ MPU6050 mpu(Wire);
 int loop_counter = 0;
 
 int cmd_ctr = 0;
-char commands[9] = "flrflrfl";
+std::string commands = "flflfrfr";
 
 float old_x = 0; 
 float old_y = 0; 
@@ -62,6 +61,12 @@ float target_angle = 0;
 float current_angle_z;
 
 static float target_motion_rotation_radians = 0;
+
+float curr_x = 0;
+float curr_y = 0;
+float current_angle = 0;
+
+bool finished = false;
 
 void setup() {
     Serial.begin(115200);
@@ -95,12 +100,16 @@ void loop() {
     float current_angle_z = mpu.getAngleZ();
 
     // Take next instruction
+    curr_x = encoder_odometry.getX();
+    curr_y = encoder_odometry.getY();
+    current_angle = current_angle_z;
     if (cmd_ctr == 0 || checkCompletedCommand()) {
         // Stop if there are no more instructions 
-        // while (cmd_ctr >= SIZE) {}
-        if (cmd_ctr >= SIZE) {
+        // while (cmd_ctr >= commands.length()) {}
+        if (cmd_ctr >= commands.length()) {
             target_distance = 0; 
-            target_angle = 0;
+            target_angle = current_angle_z;
+            finished = true;
         } else {
             // Record current state
             old_x = encoder_odometry.getX();
@@ -116,12 +125,15 @@ void loop() {
                 break;
                 case 'l':
                     target_distance = 0;
-                    target_angle = (current_angle_z + 90) % 360;
+                    // target_angle = (current_angle_z + 90) % 360;
+                    target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
                     yaw_controller.zeroAndSetTarget(0, 90);
                 break;
                 case 'r':
                     target_distance = 0;
-                    target_angle = (current_angle_z - 90 + 360) % 360;
+                    target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
                     yaw_controller.zeroAndSetTarget(0, -90);
                 break;
                 default:
@@ -131,6 +143,11 @@ void loop() {
             }
 
             cmd_ctr++;
+            if (cmd_ctr >= SIZE) {
+    			motor1.setPWM(0);
+    			motor2.setPWM(0);
+    			return; // or enter idle state
+			}
         }
     }
 
@@ -178,9 +195,10 @@ void loop() {
         loop_counter = 0;
     }
 
-    first = false;
+    // Stop the robot
+    while (finished) {}
 
-    delay(5);
+    delay(5); // TODO: REMOVE THIS MAYBE?
 
 }
 
