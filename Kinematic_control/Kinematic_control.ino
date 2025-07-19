@@ -106,7 +106,7 @@ void loop() {
 
     if (!motion_complete &&
     abs(encoder.getLeftRotation() - target_motion_rotation_radians) < 0.05 &&
-    abs(encoder.getRightRotation() + target_motion_rotation_radians) < 0.05) {
+    abs(-encoder.getRightRotation() + target_motion_rotation_radians) < 0.05) {
 
     // Stop both motors
     motor1.setPWM(0);
