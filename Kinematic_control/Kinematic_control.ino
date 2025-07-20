@@ -51,7 +51,7 @@ MPU6050 mpu(Wire);
 int loop_counter = 0;
 
 int cmd_ctr = 0;
-char commands[] = "frfrfrfr"; //[SIZE]
+char commands[] = "frflflfr"; //[SIZE]
 
 float old_x = 0; 
 float old_y = 0; 
@@ -90,6 +90,7 @@ void setup() {
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians); // reverse it for vehicle's motion
 
     yaw_controller.zeroAndSetTarget(0, 0);
+    // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
 
 }
 
@@ -97,6 +98,7 @@ void loop() {
     // Read the sensors
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
+    // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
 
     float current_angle_z = mpu.getAngleZ();
 
@@ -129,13 +131,15 @@ void loop() {
                     // target_angle = (current_angle_z + 90) % 360;
                     target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
                     if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(0, 90);
+                    // yaw_controller.zeroAndSetTarget(0, 90);
+                    yaw_controller.setTarget(target_angle);
                 break;
                 case 'r':
                     target_distance = 0;
                     target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
                     if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(0, -90);
+                    // yaw_controller.zeroAndSetTarget(0, -90);
+                    yaw_controller.setTarget(target_angle);
                 break;
                 default:
                     Serial.print("Invalid command: ");
@@ -217,10 +221,10 @@ bool checkCompletedCommand() {
         return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE;
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 2.0f; 
+        return angleDifference(target_angle, current_angle) <= 3.0f; 
     } else if (curr_cmd == 'r') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 2.0f; 
+        return angleDifference(target_angle, current_angle) <= 3.0f; 
     }
 
     return false;
