@@ -98,7 +98,7 @@ void loop() {
     // Read the sensors
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
-    // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
+//    yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
 
     float current_angle_z = mpu.getAngleZ();
 
@@ -131,15 +131,15 @@ void loop() {
                     // target_angle = (current_angle_z + 90) % 360;
                     target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
                     if (target_angle < 0) target_angle += 360.0f;
-                    // yaw_controller.zeroAndSetTarget(0, 90);
-                    yaw_controller.setTarget(target_angle);
+                    yaw_controller.zeroAndSetTarget(0, 90);
+//                    yaw_controller.setTarget(target_angle);
                 break;
                 case 'r':
                     target_distance = 0;
                     target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
                     if (target_angle < 0) target_angle += 360.0f;
-                    // yaw_controller.zeroAndSetTarget(0, -90);
-                    yaw_controller.setTarget(target_angle);
+                    yaw_controller.zeroAndSetTarget(0, -90);
+//                    yaw_controller.setTarget(target_angle);
                 break;
                 default:
                     Serial.print("Invalid command: ");
