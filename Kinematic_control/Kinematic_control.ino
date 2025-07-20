@@ -51,7 +51,7 @@ MPU6050 mpu(Wire);
 int loop_counter = 0;
 
 int cmd_ctr = 0;
-char commands[] = "flflfrfr"; //[SIZE]
+char commands[] = "frfrfrfr"; //[SIZE]
 
 float old_x = 0; 
 float old_y = 0; 
@@ -122,7 +122,7 @@ void loop() {
                 case 'f':
                     target_distance = CELL_SIZE;
                     target_angle = current_angle_z;
-                    yaw_controller.zeroAndSetTarget(0, 0);
+                    // yaw_controller.zeroAndSetTarget(0, 0); - removed
                 break;
                 case 'l':
                     target_distance = 0;
@@ -163,7 +163,7 @@ void loop() {
 
     float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output); // 
     motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
 
     // Move motors
