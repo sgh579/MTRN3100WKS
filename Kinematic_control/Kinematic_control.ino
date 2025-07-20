@@ -11,7 +11,7 @@
 #include "Motor.hpp"
 #include <math.h> 
 
-
+//notes: reduce turning speed
 
 #define EN_1_A 2 //These are the pins for the PCB encoder
 #define EN_1_B 7 //These are the pins for the PCB encoder
@@ -226,10 +226,10 @@ bool checkCompletedCommand() {
         return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE;
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 2.0f; 
+        return angleDifference(target_angle, current_angle) <= 3.0f; 
     } else if (curr_cmd == 'r') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 2.0f; 
+        return angleDifference(target_angle, current_angle) <= 3.0f; 
     }
 
     return false;
