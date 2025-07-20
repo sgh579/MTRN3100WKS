@@ -11,7 +11,7 @@
 #include "Motor.hpp"
 #include <math.h> 
 
-//notes: reduce turning speed
+
 
 #define EN_1_A 2 //These are the pins for the PCB encoder
 #define EN_1_B 7 //These are the pins for the PCB encoder
@@ -29,7 +29,6 @@
 
 #define CELL_SIZE 180
 #define SIZE 8
-#define NUM_COMMANDS (sizeof(commands) - 1) // ADDED
 
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
@@ -67,7 +66,6 @@ static float target_motion_rotation_radians = 0;
 float curr_x = 0;
 float curr_y = 0;
 float current_angle = 0;
-float logical_heading = 0; // ADDED
 
 bool finished = false;
 
@@ -86,8 +84,6 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
-    logical_heading = normalizeAngle(mpu.getAngleZ()); // ADDED
-
     // target_motion_rotation_radians = 2.0f * M_PIF;
 
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
@@ -102,8 +98,7 @@ void loop() {
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
 
-    // float current_angle_z = mpu.getAngleZ();
-    float current_angle_z = normalizeAngle(mpu.getAngleZ());
+    float current_angle_z = mpu.getAngleZ();
 
     // Take next instruction
     curr_x = encoder_odometry.getX();
@@ -112,7 +107,7 @@ void loop() {
     if (cmd_ctr == 0 || checkCompletedCommand()) {
         // Stop if there are no more instructions 
         // while (cmd_ctr >= commands.length()) {}
-        if (cmd_ctr >= NUM_COMMANDS) { // (cmd_ctr >= SIZE)
+        if (cmd_ctr >= sizeof(commands)-1) { // (cmd_ctr >= SIZE)
             target_distance = 0; 
             target_angle = current_angle_z;
             finished = true;
@@ -126,24 +121,20 @@ void loop() {
             switch (c) {
                 case 'f':
                     target_distance = CELL_SIZE;
-                    // target_angle = current_angle_z;
-                    target_angle = logical_heading;  // ADDED
+                    target_angle = current_angle_z;
                     yaw_controller.zeroAndSetTarget(0, 0);
                 break;
                 case 'l':
                     target_distance = 0;
-                    // target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
-                    // if (target_angle < 0) target_angle += 360.0f;
-                    logical_heading = normalizeAngle(logical_heading + 90.0f); // ADDED
-                    target_angle = logical_heading;  // ADDED
+                    // target_angle = (current_angle_z + 90) % 360;
+                    target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
                     yaw_controller.zeroAndSetTarget(0, 90);
                 break;
                 case 'r':
                     target_distance = 0;
-                    // target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
-                    // if (target_angle < 0) target_angle += 360.0f;
-                    logical_heading = normalizeAngle(logical_heading - 90.0f); // ADDED
-                    target_angle = logical_heading;  // ADDED
+                    target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
                     yaw_controller.zeroAndSetTarget(0, -90);
                 break;
                 default:
@@ -153,7 +144,7 @@ void loop() {
             }
 
             cmd_ctr++;
-            if (cmd_ctr >= NUM_COMMANDS) { // SIZE
+            if (cmd_ctr >= sizeof(commands) - 1) { // SIZE
     			motor1.setPWM(0);
     			motor2.setPWM(0);
                 // while (1);
@@ -162,7 +153,7 @@ void loop() {
         }
     }
 
-    // Calculate Targets - moght move
+    // Calculate Targets
     float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
     float r = 15.5; // radius?
     target_motion_rotation_radians = (target_distance * motion_length_to_rotation_scale) / r;
@@ -226,10 +217,10 @@ bool checkCompletedCommand() {
         return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE;
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 3.0f; 
+        return angleDifference(target_angle, current_angle) <= 2.0f; 
     } else if (curr_cmd == 'r') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 3.0f; 
+        return angleDifference(target_angle, current_angle) <= 2.0f; 
     }
 
     return false;
