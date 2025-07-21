@@ -53,6 +53,10 @@ public:
         setpoint = target;
     }
 
+    void setZeroRef(float zero) {
+        zero_ref = zero;
+    }
+
 public:
     uint32_t prev_time, curr_time = micros();
     float dt;
