@@ -29,7 +29,7 @@
 
 // OLED display settings
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
 
@@ -71,6 +71,9 @@ float current_angle = 0;
 
 // FLAGs
 bool cmd_sequence_completion_FLAG = false; 
+
+// buffer
+char monitor_buffer[64];
 
 void setup() {
     Serial.begin(115200);
@@ -122,6 +125,8 @@ void loop() {
     //modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
     if (cmd_pointer == 0 || is_this_cmd_completed()) {
+        sprintf(monitor_buffer, "parsing  command[%d]: %c",cmd_pointer, commands[cmd_pointer]);
+        show_one_line_monitor(monitor_buffer);
         // are all commands completed?
         if (cmd_pointer == sizeof(commands)) { 
             cmd_sequence_completion_FLAG = true;
@@ -135,8 +140,8 @@ void loop() {
             switch (c) {
                 case 'f':
                     target_distance = CELL_SIZE;
-                    target_angle = 0;
-                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    target_angle = target_angle;
+                    yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     
@@ -144,16 +149,20 @@ void loop() {
                 break;
                 case 'l':
                     target_distance = 0;
-                    target_angle = 90;
-                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    target_angle = target_angle + 90;
+                    target_angle = fmodf(target_angle, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
+                    yaw_controller.zeroAndSetTarget(current_angle, 90);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     
                 break;
                 case 'r':
                     target_distance = 0;
-                    target_angle = -90;
-                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    target_angle = target_angle-90;
+                    yaw_controller.zeroAndSetTarget(current_angle, -90);
+                    target_angle = fmodf(target_angle, 360.0f);
+                    if (target_angle < 0) target_angle += 360.0f;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                 break;
@@ -171,9 +180,13 @@ void loop() {
         target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
     }
 
-    while(cmd_sequence_completion_FLAG) {
+
+    if(cmd_sequence_completion_FLAG) {
         Serial.println(F("[INFO] Command sequence completed. The robot stops."));
-        delay(1000); // Wait for a second before stopping
+        show_one_line_monitor("Command sequence completed. ROBOT stopped");
+        motor1.setPWM(0);
+        motor2.setPWM(0);
+        while(true){}
     }
 
     // feedback control, dont change this part
@@ -231,7 +244,7 @@ bool is_this_cmd_completed() {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y; 
 
-        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE; // TODO manually change float to bool
+        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE - 10; // TODO manually change float to bool
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
         return angleDifference(target_angle, current_angle) <= 3.0f; 
