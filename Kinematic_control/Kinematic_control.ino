@@ -11,6 +11,11 @@
 #include "Motor.hpp"
 #include <math.h> 
 
+// ROBOT geometry
+#define R 15.5 // radius of the wheel
+#define LENGTH_TO_ROTATION_SCALE 1 // to be adjusted based on test
+#define LENGTH_OF_AXLE 82 // length of the axle in mm, used for distance calculations
+
 
 //These are the pins set up
 #define EN_1_A 2 
@@ -48,7 +53,7 @@ MPU6050 mpu(Wire);
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
 int cmd_pointer = 0; // Pointer to the current command in the command sequence
-char commands[] = "frflflfr"; // Command sequence for the robot to follow
+char commands[] = "frflflfr"; // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
 
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0; 
@@ -103,12 +108,12 @@ void loop() {
     curr_X = encoder_odometry.getX();
     curr_Y = encoder_odometry.getY();
     current_angle = current_angle_z;
-    if (cmd_pointer == 0 || checkCompletedCommand()) {
-        // Stop if there are no more instructions 
-        // while (cmd_pointer >= commands.length()) {}
-        if (cmd_pointer >= sizeof(commands)-1) { // (cmd_pointer >= SIZE)
-            target_distance = 0; 
-            target_angle = current_angle_z;
+
+    //modify the kinematic control target only when
+    // the command pointer is at the start or the previous command has been completed
+    if (cmd_pointer == 0 || is_this_cmd_completed()) {
+        // are all commands completed?
+        if (cmd_pointer == sizeof(commands)) { 
             cmd_sequence_completion_FLAG = true;
         } else {
             // Record current state
@@ -120,60 +125,61 @@ void loop() {
             switch (c) {
                 case 'f':
                     target_distance = CELL_SIZE;
-                    target_angle = current_angle_z;
-                    // yaw_controller.zeroAndSetTarget(0, 0); - removed // TODO: dont ser target here, we can change the target angle value
+                    target_angle = 0;
+                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
+                    motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    
+
                 break;
                 case 'l':
                     target_distance = 0;
-                    // target_angle = (current_angle_z + 90) % 360;
-                    target_angle = fmodf(current_angle_z + 90.0f, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(0, 90); // TODO: dont use zero and se
-                    // yaw_controller.setTarget(target_angle);
+                    target_angle = 90;
+                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
+                    motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    
                 break;
                 case 'r':
                     target_distance = 0;
-                    target_angle = fmodf(current_angle_z - 90.0f + 360.0f, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(0, -90);
-                    // yaw_controller.setTarget(target_angle);
+                    target_angle = -90;
+                    yaw_controller.zeroAndSetTarget(current_angle, target_angle);
+                    motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
+                    motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                 break;
                 default:
-                    Serial.print("Invalid command: "); // TODO maybe stop the loop
+                    Serial.print("Invalid command: ");
                     Serial.println(c);
+                    while(true) {}
                 break;
             }
 
+            //move to the next command
             cmd_pointer++;
-            if (cmd_pointer >= sizeof(commands) - 1) { // SIZE
-    			motor1.setPWM(0);
-    			motor2.setPWM(0);
-                // while (1);
-    			return; // or enter idle state
-			}
         }
+
+        target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
     }
 
-    // Calculate Targets
-    float motion_length_to_rotation_scale = 1; // to be adjusted based on the motor and encoder specifications
-    float r = 15.5; // radius?
-    target_motion_rotation_radians = (target_distance * motion_length_to_rotation_scale) / r;
+    while(cmd_sequence_completion_FLAG) {
+        Serial.println(F("[INFO] Command sequence completed. The robot stops."));
+        delay(1000); // Wait for a second before stopping
+    }
 
-    motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), target_motion_rotation_radians); 
-    motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -target_motion_rotation_radians);
-
+    // feedback control, dont change this part
     float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output); // 
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output); 
     motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
 
-    // Move motors
     int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
 
     motor1.setPWM(motor1_encoder_position_controller_output); 
     motor2.setPWM(motor2_encoder_position_controller_output); 
 
+
+    // Debugging information
     Serial.print(F("*****************************************loop "));
     Serial.print(loop_counter);
     Serial.println(F("*****************************************"));
@@ -207,7 +213,7 @@ void loop() {
 
 // TODO: Checks if the current command has been completed
 // TODO: NEED TO CHECK WHAT THE RANGE FOR ANGLES IS e.g. 0 - 360
-bool checkCompletedCommand() {
+bool is_this_cmd_completed() {
     char curr_cmd = commands[cmd_pointer - 1];
 
     if (curr_cmd == 'f') {
@@ -215,7 +221,7 @@ bool checkCompletedCommand() {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y; 
 
-        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE;
+        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE; // TODO manually change float to bool
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
         return angleDifference(target_angle, current_angle) <= 3.0f; 
