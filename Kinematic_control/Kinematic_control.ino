@@ -29,7 +29,7 @@
 
 // OLED display settings
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+#define SCREEN_HEIGHT 24 // OLED display height, in pixels
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
 
@@ -43,7 +43,7 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
 mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
-mtrn3100::PIDController yaw_controller(0.05, 0.1, 0);
+mtrn3100::PIDController yaw_controller(0.25, 0.5, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -128,7 +128,7 @@ void loop() {
         sprintf(monitor_buffer, "parsing  command[%d]: %c",cmd_pointer, commands[cmd_pointer]);
         show_one_line_monitor(monitor_buffer);
         // are all commands completed?
-        if (cmd_pointer == sizeof(commands)) { 
+        if (cmd_pointer == sizeof(commands)-1) { 
             cmd_sequence_completion_FLAG = true;
         } else {
             // Record current state
@@ -234,8 +234,7 @@ void loop() {
 
 }
 
-// TODO: Checks if the current command has been completed
-// TODO: NEED TO CHECK WHAT THE RANGE FOR ANGLES IS e.g. 0 - 360
+// TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
     char curr_cmd = commands[cmd_pointer - 1];
 
@@ -244,13 +243,13 @@ bool is_this_cmd_completed() {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y; 
 
-        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE - 10; // TODO manually change float to bool
+        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE - 5; // TODO manually change float to bool
     } else if (curr_cmd == 'l') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 3.0f; 
+        return angleDifference(target_angle, current_angle) <= 1.0f; 
     } else if (curr_cmd == 'r') {
         // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 3.0f; 
+        return angleDifference(target_angle, current_angle) <= 1.0f; 
     }
 
     return false;
