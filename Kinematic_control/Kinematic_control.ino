@@ -87,13 +87,23 @@ void setup() {
     mpu.calcOffsets(true,true);
     Serial.println("Done!\n");
 
+    // screen
+    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for(;;); // Don't proceed, loop forever
+    }
+    Serial.println(F("SSD1306 allocation completed"));
+
+    display.display();
+    delay(1000); // Pause for 1 seconds
+
 
     // setup zero reference for the pid controllers
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), 0); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -0); // reverse it for vehicle's motion
     yaw_controller.zeroAndSetTarget(0, 0);
 
-
+    show_one_line_monitor("ROBOT setup completed");
 }
 
 void loop() {
@@ -244,4 +254,19 @@ float angleDifference(float a, float b) {
     if (diff > 180.0f)
         diff = 360.0f - diff;
     return diff;
+}
+
+// thisfunction shows one character array on the OLED display
+// it can't be called in high frequency
+void show_one_line_monitor(const char* str) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    int i = 0;
+    while (str[i] != '\0') {
+        display.write(str[i]);
+        i++;
+    }
+    display.display();
 }
