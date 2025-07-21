@@ -36,6 +36,13 @@
 // Maze settings
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
+// 新增：指令完成判定所需的周期阈值
+#define CMD_COMPLETE_STABLE_CYCLES 20
+#define POSITION_ERROR_THRESHOLD 5.0f
+#define ANGLE_ERROR_THRESHOLD 1.0f
+#define MOTOR_OUTPUT_THRESHOLD 10
+#define YAW_OUTPUT_THRESHOLD 10.0f
+
 // Global variables
 
 // Global objects
@@ -74,6 +81,10 @@ bool cmd_sequence_completion_FLAG = false;
 
 // buffer
 char monitor_buffer[64];
+
+// 新增：将两个PID输出声明为全局变量
+int motor1_encoder_position_controller_output = 0;
+int motor2_encoder_position_controller_output = 0;
 
 void setup() {
     Serial.begin(115200);
@@ -195,8 +206,8 @@ void loop() {
     motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output); 
     motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
 
-    int motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-    int motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+    motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
+    motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
 
     motor1.setPWM(motor1_encoder_position_controller_output); 
     motor2.setPWM(motor2_encoder_position_controller_output); 
@@ -237,22 +248,41 @@ void loop() {
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
     char curr_cmd = commands[cmd_pointer - 1];
+    static int stable_counter = 0; // 连续满足条件的周期计数
 
+    bool completed = false;
+
+    // 直接使用全局变量，无需extern
     if (curr_cmd == 'f') {
-        // TODO: MAY NEED TO ADJUST VARIANCE
         float delta_x = curr_X - previous_X;
-        float delta_y = curr_Y - previous_Y; 
+        float delta_y = curr_Y - previous_Y;
+        float position_error = CELL_SIZE - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
 
-        return sqrt(pow(delta_x, 2) + pow(delta_y, 2)) >= CELL_SIZE - 5; // TODO manually change float to bool
-    } else if (curr_cmd == 'l') {
-        // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 1.0f; 
-    } else if (curr_cmd == 'r') {
-        // return abs(target_angle - current_angle) <= 3;
-        return angleDifference(target_angle, current_angle) <= 1.0f; 
+        if (position_error <= POSITION_ERROR_THRESHOLD &&
+            abs(motor1_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD &&
+            abs(motor2_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD) {
+            stable_counter++;
+        } else {
+            stable_counter = 0;
+        }
+        completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
+    } else if (curr_cmd == 'l' || curr_cmd == 'r') {
+        float angle_error = angleDifference(target_angle, current_angle);
+
+        if (angle_error <= ANGLE_ERROR_THRESHOLD &&
+            abs(motor1_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD &&
+            abs(motor2_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD) {
+            stable_counter++;
+        } else {
+            stable_counter = 0;
+        }
+        completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
+    } else {
+        stable_counter = 0;
     }
 
-    return false;
+    if (completed) stable_counter = 0; // 完成后重置计数器
+    return completed;
 }
 
 float normalizeAngle(float angle) {
