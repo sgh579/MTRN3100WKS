@@ -24,7 +24,12 @@ public:
 
         prev_error = error;
 
-        return output;
+        if (turn_on_flag == true) {
+            return output;
+        } else {
+            return 0;
+        }
+        
     }
 
     // Function used to return the last calculated error. 
@@ -57,6 +62,14 @@ public:
         zero_ref = zero;
     }
 
+    void disable() {
+        turn_on_flag = false;
+    }
+
+    void enable() {
+        turn_on_flag = true;
+    }
+
 public:
     uint32_t prev_time, curr_time = micros();
     float dt;
@@ -67,6 +80,7 @@ private:
     float prev_error = 0;
     float setpoint = 0;
     float zero_ref = 0;
+    bool turn_on_flag = true;
 
     
 };
