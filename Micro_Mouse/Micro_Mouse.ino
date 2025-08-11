@@ -38,9 +38,9 @@
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 20
+#define CMD_COMPLETE_STABLE_CYCLES 20 // TODO: ADJUST BACK TO 20
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 3.0f
+#define ANGLE_ERROR_THRESHOLD 10.0f
 #define MOTOR_OUTPUT_THRESHOLD 40
 #define YAW_OUTPUT_THRESHOLD 30.0f
 
@@ -62,7 +62,7 @@ mtrn3100::CommandParser commands("f180|o90|f180|f180|o0"); // Command sequence f
 // Global variables
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
-bool first_cmd = true;
+char prev_cmd = '\0';
 
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0; 
@@ -139,13 +139,13 @@ void loop() {
 
     //modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
-    if (first_cmd || is_this_cmd_completed()) {
+    if (prev_cmd == '\0' || is_this_cmd_completed()) {
 
         // are all commands completed?
         if (commands.isEmpty()) { 
             cmd_sequence_completion_FLAG = true;
         } else {
-            sprintf(monitor_buffer, "parsing command: %c%lf", commands.getMoveType(), commands.getMoveValue());
+            sprintf(monitor_buffer, "command: %c%d", commands.getMoveType(), (int) round(commands.getMoveValue()));
             show_one_line_monitor(monitor_buffer);
 
             // Record current state
@@ -167,9 +167,9 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
-                    target_angle = value + 360.0f;
+                    target_angle = target_angle + value + 360.0f;
                     target_angle = fmodf(target_angle, 360.0f);
-                    yaw_controller.zeroAndSetTarget(current_angle, current_angle - target_angle); // TODO: ADJUST FOR NEGATIVES
+                    yaw_controller.zeroAndSetTarget(current_angle, target_angle - current_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     yaw_controller.enable();
@@ -182,11 +182,11 @@ void loop() {
                 break;
             }
 
+            prev_cmd = c; 
+
             //move to the next command
             commands.next();
-        }
-
-        first_cmd = false;
+        }        
 
         target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
     }
@@ -247,7 +247,7 @@ void loop() {
 
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
-    char curr_cmd = commands.getMoveType();
+    char curr_cmd = prev_cmd;
     static int stable_counter = 0; // Count of consecutive cycles that meet the condition
 
     bool completed = false;
@@ -267,6 +267,9 @@ bool is_this_cmd_completed() {
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
     } else if (curr_cmd == 'o') {
         float angle_error = angleDifference(target_angle, current_angle);
+
+        sprintf(monitor_buffer, "c: %d\nt: %d", (int) current_angle, (int) target_angle);
+        show_one_line_monitor(monitor_buffer);
 
         if (angle_error <= ANGLE_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD &&
