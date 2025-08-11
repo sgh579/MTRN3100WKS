@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "PIDController.hpp"
 #include "Motor.hpp"
+#include "CommandParser.hpp"
 #include <math.h> 
 
 // ROBOT geometry
@@ -55,12 +56,13 @@ mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
+mtrn3100::CommandParser commands("f180|o90|f180|f180|o0"); // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+
 
 // Global variables
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
-int cmd_pointer = 0; // Pointer to the current command in the command sequence
-char commands[] = "lfrffrfl"; // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+bool first_cmd = true;
 
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0; 
@@ -137,49 +139,41 @@ void loop() {
 
     //modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
-    if (cmd_pointer == 0 || is_this_cmd_completed()) {
-        sprintf(monitor_buffer, "parsing  command[%d]: %c",cmd_pointer, commands[cmd_pointer]);
-        show_one_line_monitor(monitor_buffer);
+    if (first_cmd || is_this_cmd_completed()) {
+
         // are all commands completed?
-        if (cmd_pointer == sizeof(commands)-1) { 
+        if (commands.isEmpty()) { 
             cmd_sequence_completion_FLAG = true;
         } else {
+            sprintf(monitor_buffer, "parsing command: %s", commands.getCommand());
+            show_one_line_monitor(monitor_buffer);
+
             // Record current state
             previous_X = encoder_odometry.getX();
             previous_Y = encoder_odometry.getY();
 
             // Set targets
-            char c = commands[cmd_pointer];
+            char c = commands.getMoveType();
+            float value = commands.getMoveValue();
             switch (c) {
                 case 'f':
-                    target_distance = CELL_SIZE;
+                    target_distance = value;
                     target_angle = target_angle;
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.disable();
+                    yaw_controller.disable(); // TODO: Use lidar to adjust movement
 
                 break;
-                case 'l':
+                case 'o':
                     target_distance = 0;
-                    target_angle = target_angle + 90;
+                    target_angle = value + 360.0f;
                     target_angle = fmodf(target_angle, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(current_angle, 90);
+                    yaw_controller.zeroAndSetTarget(current_angle, current_angle - target_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     yaw_controller.enable();
                     
-                break;
-                case 'r':
-                    target_distance = 0;
-                    target_angle = target_angle-90;
-                    yaw_controller.zeroAndSetTarget(current_angle, -90);
-                    target_angle = fmodf(target_angle, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
-                    motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.enable();
                 break;
                 default:
                     Serial.print("Invalid command: ");
@@ -189,14 +183,16 @@ void loop() {
             }
 
             //move to the next command
-            cmd_pointer++;
+            commands.next();
         }
+
+        first_cmd = false;
 
         target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
     }
 
 
-    if(cmd_sequence_completion_FLAG) {
+    if (cmd_sequence_completion_FLAG) {
         Serial.println(F("[INFO] Command sequence completed. The robot stops."));
         show_one_line_monitor("Command sequence completed. ROBOT stopped");
         motor1.setPWM(0);
@@ -251,7 +247,7 @@ void loop() {
 
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
-    char curr_cmd = commands[cmd_pointer - 1];
+    char curr_cmd = commands.getMoveType();
     static int stable_counter = 0; // Count of consecutive cycles that meet the condition
 
     bool completed = false;
@@ -269,7 +265,7 @@ bool is_this_cmd_completed() {
             stable_counter = 0;
         }
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
-    } else if (curr_cmd == 'l' || curr_cmd == 'r') {
+    } else if (curr_cmd == 'o') {
         float angle_error = angleDifference(target_angle, current_angle);
 
         if (angle_error <= ANGLE_ERROR_THRESHOLD &&

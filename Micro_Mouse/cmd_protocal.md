@@ -9,7 +9,7 @@ a simple series of f/r/l
 
 # extended command
 
-f<length>: move forward for <length> mm
+f<length>: move forward for <length> mm (TODO: Adjust to cm)
 o<deg>: turn to the orientaion wrt. {F0}
 
 {F0} means the world coordinate frame. In the initial state, (if robot are setup in (0,0), heading the north), the value of orientaion is 0. positive direction: CCW
@@ -21,3 +21,4 @@ to connect each other, put a  '|' at the end of each cmd
 an example:
 
 f18|o90|f18|f18|o0|
+
