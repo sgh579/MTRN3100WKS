@@ -363,7 +363,8 @@ class Grid_Graph:
                              mask_image_path: str,
                              white_thresh: int = 200,
                              line_thickness: int = 3,
-                             require_ratio: float = 1.0) -> Tuple[int, int]:
+                             require_ratio: float = 1.0,
+                             mid_ratio: float = 0.5) -> Tuple[int, int]:
         """
         用二值/灰度掩膜筛边：只有“沿边整条线的像素都为白（≥white_thresh）”才保留。
         - white_thresh: 将掩膜灰度 >= 该值视为白
@@ -412,8 +413,17 @@ class Grid_Graph:
 
                 # 在一张空掩膜上画这条线，作为采样通道
                 line_mask = np.zeros((H, W), dtype=np.uint8)
-                cv2.line(line_mask, (x1, y1), (x2, y2), 255, thickness=line_thickness, lineType=cv2.LINE_8)
 
+                alpha = float(np.clip(mid_ratio, 1e-6, 1.0))   # 0~1 内
+                t0 = (1.0 - alpha) / 2.0
+                t1 = 1.0 - t0
+
+                mx1 = int(round(x1 + t0 * (x2 - x1)))
+                my1 = int(round(y1 + t0 * (y2 - y1)))
+                mx2 = int(round(x1 + t1 * (x2 - x1)))
+                my2 = int(round(y1 + t1 * (y2 - y1)))
+
+                cv2.line(line_mask, (mx1, my1), (mx2, my2), 255, thickness=line_thickness, lineType=cv2.LINE_8)
                 line_vals = mask[line_mask > 0]
                 if line_vals.size == 0:
                     # 理论不会发生；稳妥起见当作不通过
@@ -437,14 +447,16 @@ class Grid_Graph:
                           out_path: Optional[str] = None,
                           white_thresh: int = 200,
                           line_thickness: int = 3,
-                          require_ratio: float = 1.0) -> str:
+                          require_ratio: float = 1.0,
+                          mid_ratio: float = 0.5) -> str:
         """
         便捷方法：先按掩膜筛边，再 render() 保存。
         """
         self.filter_edges_by_mask(mask_image_path,
                                   white_thresh=white_thresh,
                                   line_thickness=line_thickness,
-                                  require_ratio=require_ratio)
+                                  require_ratio=require_ratio,
+                                  mid_ratio=mid_ratio)
         return self.render(out_path=out_path)
 
 
