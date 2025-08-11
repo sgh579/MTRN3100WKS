@@ -1,54 +1,58 @@
 #pragma once
-
-#include <queue>
-#include <string>
+#include <Arduino.h>
+#include <string.h> // strtok, strncpy
+#include <stdlib.h> // atof
 
 namespace mtrn3100 {
 
 class CommandParser {
-public: 
-  CommandParser(std::string commandString) {
-    std::stringstream ss(commandString);
-    std::string word;
-    while (!ss.eof()) {
-        getline(ss, word, '|');
-        commands.push(word);
-    }
-  }
+public:
+  CommandParser(const char* commandString) {
+    // Copy to buffer (for strtok)
+    strncpy(buffer, commandString, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
 
-  // For debugging
-  std::string getCommand() {
-    return commands.front();
+    // Tokenize with '|' delimiter
+    char* token = strtok(buffer, "|");
+    while (token != NULL && cmdCount < MAX_COMMANDS) {
+      moveTypes[cmdCount] = token[0];              // first char is move type
+      moveValues[cmdCount] = atof(token + 1);      // rest is the number
+      cmdCount++;
+      token = strtok(NULL, "|");
+    }
   }
 
   char getMoveType() {
-    if (commands.empty()) return '\0';
-    return commands.empty() ? '\0' : commands.front()[0];
+    if (!isEmpty()) {
+      return moveTypes[cmdIndex];
+    }
+    return '\0';
   }
 
   float getMoveValue() {
-    if (commands.empty()) return 0;
-
-    float number;
-
-    if (std::stringstream(commands.front()) >> number) { 
-      return number;
+    if (!isEmpty()) {
+      return moveValues[cmdIndex];
     }
-
-    return 0;
+    return 0.0f;
   }
 
   void next() {
-    queue.pop();
+    if (!isEmpty()) {
+      cmdIndex++;
+    }
   }
 
   bool isEmpty() {
-    return commands.empty();
+    return cmdIndex >= cmdCount;
   }
 
-private: 
-  std::queue<std::string> commands;
-}
+private:
+  static const int MAX_COMMANDS = 10; // TODO: Adjust
+  char buffer[200];                   // holds raw input string
+  char moveTypes[MAX_COMMANDS];       // stores the letter for each command
+  float moveValues[MAX_COMMANDS];     // stores the numeric value for each command
+  int cmdCount = 0;
+  int cmdIndex = 0;
+};
 
-}
-
+} // namespace mtrn3100

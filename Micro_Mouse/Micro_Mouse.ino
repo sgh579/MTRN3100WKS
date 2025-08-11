@@ -145,7 +145,7 @@ void loop() {
         if (commands.isEmpty()) { 
             cmd_sequence_completion_FLAG = true;
         } else {
-            sprintf(monitor_buffer, "parsing command: %s", commands.getCommand());
+            sprintf(monitor_buffer, "parsing command: %c%lf", commands.getMoveType(), commands.getMoveValue());
             show_one_line_monitor(monitor_buffer);
 
             // Record current state
@@ -334,7 +334,7 @@ class my_map {
         float x_on_ground;
         float y_on_ground;
 
-}
+};
 
 
 // better linear motion
