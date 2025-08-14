@@ -126,7 +126,24 @@ class BFSPathfinder:
         # Add final orientation command if needed
         commands.append("o0")  # Return to North orientation
         
-        return "|".join(commands) + "|"
+        optimized_commands = []
+        i = 0
+        while i < len(commands):
+            cmd = commands[i]
+            
+            if cmd.startswith('f'):
+                # Count consecutive forward commands
+                total_distance = 0
+                while i < len(commands) and commands[i].startswith('f'):
+                    distance = int(commands[i][1:])
+                    total_distance += distance
+                    i += 1
+                optimized_commands.append(f"f{total_distance}")
+            else:
+                optimized_commands.append(cmd)
+                i += 1
+        
+        return ",".join(optimized_commands)
     
     def visualize_path(self, 
                       image_path: str, 
@@ -198,7 +215,7 @@ class BFSPathfinder:
         return output_path
 
 # Add this to your main script after building the graph:
-def run_pathfinding_example(bfs_graph, image_path: str):
+def run_pathfinding_example(bfs_graph, image_path: str, start, end):
     """
     Example function showing how to use the BFS pathfinder
     """
@@ -206,8 +223,10 @@ def run_pathfinding_example(bfs_graph, image_path: str):
     pathfinder = BFSPathfinder(bfs_graph, grid_rows=9, grid_cols=9)
     
     # Define start and end positions (grid coordinates)
-    start_pos = (1, 7)  # Grid position (x=1, y=7)
-    end_pos = (7, 1)    # Grid position (x=7, y=1)
+    # start_pos = (1, 7)  # Grid position (x=1, y=7)
+    # end_pos = (7, 1)    # Grid position (x=7, y=1)
+    start_pos = start  # Grid position (x=1, y=7)
+    end_pos = end    # Grid position (x=7, y=1)
     
     print(f"Finding path from {start_pos} to {end_pos}")
     
