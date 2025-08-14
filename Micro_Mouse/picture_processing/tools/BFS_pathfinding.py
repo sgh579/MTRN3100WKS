@@ -71,7 +71,7 @@ class BFSPathfinder:
         print(f"No path found from {start_grid_pos} to {end_grid_pos}")
         return []
     
-    def path_to_commands(self, path: List[int], cell_size_mm: int = 18) -> str:
+    def path_to_commands(self, path: List[int], cell_size_mm: int = 180) -> str:
         """
         Convert path to motion commands
         
@@ -126,7 +126,24 @@ class BFSPathfinder:
         # Add final orientation command if needed
         commands.append("o0")  # Return to North orientation
         
-        return "|".join(commands) + "|"
+        optimized_commands = []
+        i = 0
+        while i < len(commands):
+            cmd = commands[i]
+            
+            if cmd.startswith('f'):
+                # Count consecutive forward commands
+                total_distance = 0
+                while i < len(commands) and commands[i].startswith('f'):
+                    distance = int(commands[i][1:])
+                    total_distance += distance
+                    i += 1
+                optimized_commands.append(f"f{total_distance}")
+            else:
+                optimized_commands.append(cmd)
+                i += 1
+        
+        return ",".join(optimized_commands)
     
     def visualize_path(self, 
                       image_path: str, 
