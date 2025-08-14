@@ -1,5 +1,5 @@
 import os
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import cv2
 import numpy as np
 from collections import deque
@@ -17,11 +17,31 @@ if __name__ == '__main__':
     # Output : corners = {'top_left':(x,y), 'top_right':(x,y),
     #                     'bottom_left':(x,y), 'bottom_right':(x,y)} or None
     # ============================
-    print("Hello")
     CornerF = CornerFinder()
     # corners = CornerF.pick_corners_with_roi("/Users/naveen/Desktop/MicromouseMazeCamera.jpg")
     # corners = CornerF.pick_corners_with_roi("Documents\\Github\\MTRN3100WKS-1\\Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg")
-    corners = CornerF.pick_corners_with_roi("MicromouseMazeCamera.jpg")
+    backup_image_file_path = "Micro_Mouse\\picture_processing\\images\\MicromouseMazeCamera.jpg"
+
+    # if we have camera 1
+    save_images_path = "Micro_Mouse\\picture_processing\\images\\"
+    camera_raw_save_image = os.path.join(save_images_path, "captured_image.jpg")
+
+    cap = cv2.VideoCapture(1)  # Camera ID 1
+    if cap.isOpened():
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            cv2.imwrite(camera_raw_save_image, frame)
+            print(f"Captured image from camera 1 and saved to: {camera_raw_save_image}")
+            original_image_file_path = camera_raw_save_image
+        else:
+            print("Camera 1 is open, but failed to read frame. Using original image instead.")
+            original_image_file_path = backup_image_file_path
+    else:
+        print("Camera 1 not detected. Using original image instead.")
+        original_image_file_path = backup_image_file_path
+
+    corners = CornerF.pick_corners_with_roi(original_image_file_path)
     if corners is None:
         print("Cancelled or failed.")
     else: 
@@ -35,7 +55,7 @@ if __name__ == '__main__':
     # Output : A rectified image saved to disk; returns the output path.
     # ============================
     proj = Projection(out_size=(2160,2160), margin=120)
-    out_file = proj.warp_from_image("MicromouseMazeCamera.jpg", corners)
+    out_file = proj.warp_from_image(original_image_file_path, corners)
     print("Saved to:", out_file)
 
     # ============================
@@ -97,183 +117,4 @@ if __name__ == '__main__':
 
 
 
-    ### IGNORe BELOW ###
-
-
-
-
-
-
-    # start = []
-    # end = []
-
-
-    # ### using ind assignment
-
-
-    # def bfs(graph, start, end):
-    #     if start not in graph.nodes() or end not in graph.nodes():
-    #         return []
-        
-    #     queue = deque([start])
-    #     visited = set([start])
-    #     parent = {start: None}
-        
-    #     while queue:
-    #         current_node_id = queue.popleft()
-            
-    #         if current_node_id == end:
-    #             path = []
-    #             while current_node_id is not None:
-    #                 path.append(current_node_id)
-    #                 current_node_id = parent[current_node_id]
-    #             path.reverse()
-    #             return path
-            
-    #         adjacent_nodes = []
-    #         for (node1, node2) in graph.edges.keys():
-    #             if node1 == current_node_id and node2 not in visited:
-    #                 adjacent_nodes.append(node2)
-    #             elif node2 == current_node_id and node1 not in visited:
-    #                 adjacent_nodes.append(node1)
-
-    #         for adjacent_node in adjacent_nodes:
-    #             if adjacent_node not in visited:
-    #                 visited.add(adjacent_node)
-    #                 queue.append(adjacent_node)
-    #                 parent[adjacent_node] = current_node_id
-        
-    #     return []
-
-
-    # path = bfs(bfs_graph,start,end)
-
-    # ## convert this to instructions using
-    # # commands = path_to_commands(path) # defined below
-
-
-    # ## Claude Answer ##
-
-    # def bfs_shortest_path(graph, start, finish):
-    #     """
-    #     Find the shortest path between two nodes using BFS algorithm.
-        
-    #     Args:
-    #         graph: NetworkX graph object (from your Grid_Graph.graph)
-    #         start: tuple (row, col) - starting position
-    #         finish: tuple (row, col) - ending position
-        
-    #     Returns:
-    #         list: Path as list of (row, col) tuples, or None if no path exists
-    #     """
-    #     if start not in graph.nodes or finish not in graph.nodes:
-    #         print(f"Error: Start {start} or finish {finish} not in graph")
-    #         return None
-        
-    #     if start == finish:
-    #         return [start]
-        
-    #     # BFS implementation
-    #     queue = deque([(start, [start])])  # (current_node, path_to_current)
-    #     visited = {start}
-        
-    #     while queue:
-    #         current_node, path = queue.popleft()
-            
-    #         # Check all neighbors of current node
-    #         for neighbor in graph.neighbors(current_node):
-    #             if neighbor not in visited:
-    #                 new_path = path + [neighbor]
-                    
-    #                 if neighbor == finish:
-    #                     return new_path
-                    
-    #                 visited.add(neighbor)
-    #                 queue.append((neighbor, new_path))
-        
-    #     return None  # No path found
-
-    # def path_to_commands(path, cell_size_mm=18):
-    #     """
-    #     Convert a path of grid coordinates to movement commands for Arduino.
-        
-    #     Args:
-    #         path: list of (row, col) tuples representing the path
-    #         cell_size_mm: size of each grid cell in millimeters (default 18mm)
-        
-    #     Returns:
-    #         str: Command string in format like "f18|o90|f18|f18|o0|"
-    #     """
-    #     if not path or len(path) < 2:
-    #         return ""
-        
-    #     commands = []
-    #     current_direction = 0  # 0=North, 90=East, 180=South, 270=West
-        
-    #     for i in range(len(path) - 1):
-    #         current = path[i]
-    #         next_pos = path[i + 1]
-            
-    #         # Calculate direction needed
-    #         row_diff = next_pos[0] - current[0]
-    #         col_diff = next_pos[1] - current[1]
-            
-    #         # Determine target direction
-    #         if row_diff == -1 and col_diff == 0:  # Moving up (north)
-    #             target_direction = 0
-    #         elif row_diff == 1 and col_diff == 0:  # Moving down (south)
-    #             target_direction = 180
-    #         elif row_diff == 0 and col_diff == 1:  # Moving right (east)
-    #             target_direction = 90
-    #         elif row_diff == 0 and col_diff == -1:  # Moving left (west)
-    #             target_direction = 270
-    #         else:
-    #             print(f"Warning: Invalid move from {current} to {next_pos}")
-    #             continue
-            
-    #         # Calculate rotation needed
-    #         rotation_needed = (target_direction - current_direction) % 360
-    #         if rotation_needed > 180:
-    #             rotation_needed -= 360
-            
-    #         # Add rotation command if needed
-    #         if rotation_needed != 0:
-    #             new_direction = (current_direction + rotation_needed) % 360
-    #             commands.append(f"o{new_direction}")
-    #             current_direction = new_direction
-            
-    #         # Add forward movement command
-    #         commands.append(f"f{cell_size_mm}")
-        
-    #     return "|".join(commands) + "|"
-
-    # # Example usage with your grid graph
-    # def find_path_and_generate_commands(bfs_graph, start, finish):
-    #     """
-    #     Complete function to find path and generate Arduino commands.
-        
-    #     Args:
-    #         bfs_graph: Your Grid_Graph.graph object
-    #         start: tuple (row, col) - starting position
-    #         finish: tuple (row, col) - ending position
-        
-    #     Returns:
-    #         tuple: (path, commands) where path is list of coordinates and commands is string
-    #     """
-    #     print(f"Finding path from {start} to {finish}")
-        
-    #     # Find shortest path using BFS
-    #     path = bfs_shortest_path(bfs_graph, start, finish)
-        
-    #     if path is None:
-    #         print("No path found!")
-    #         return None, ""
-        
-    #     print(f"Path found: {path}")
-    #     print(f"Path length: {len(path) - 1} steps")
-        
-    #     # Generate movement commands
-    #     commands = path_to_commands(path)
-    #     print(f"Arduino commands: {commands}")
-        
-    #     return path, commands
+    
