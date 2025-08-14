@@ -12,6 +12,17 @@
 #include "CommandParser.hpp"
 #include <math.h> 
 
+// TODO: not dealing with bounds very well - when starting from a big number and going to a small number, need to tell it to turn left or right
+// Note: i think its working?
+// char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
+// char *script = "o40|f50|o350|f50|o180|f50|o0";
+
+// Polygon
+char *script = "f80|o45|f80|o90|f80|o135|f80|o180|f80|o225|f80|o270|f80|o315|f80|o0";
+
+// Small angles script
+// char *script = "f100|o45|f50|o90|f30|o245|f100";
+
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
 #define LENGTH_TO_ROTATION_SCALE 1 // to be adjusted based on test
@@ -49,14 +60,14 @@
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 0.1); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 0.1);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 1); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
 mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
-mtrn3100::CommandParser commands("f180|o90|f180|f180|o0"); // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+mtrn3100::CommandParser commands(script); // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
 
 
 // Global variables
@@ -157,7 +168,8 @@ void loop() {
             float value = commands.getMoveValue();
             switch (c) {
                 case 'f':
-                    target_distance = value;
+                    target_distance = value; // mm
+                    // target_distance = value * 10; // cm
                     target_angle = target_angle;
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
@@ -167,9 +179,11 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
-                    target_angle = target_angle + value + 360.0f;
-                    target_angle = fmodf(target_angle, 360.0f);
-                    yaw_controller.zeroAndSetTarget(current_angle, target_angle - current_angle); // TODO: ADJUST FOR NEGATIVES
+                    target_angle = fmodf(value + 360.0f, 360.0f);
+                    float turn_angle = target_angle - current_angle;
+                    if (turn_angle < -180.0f) turn_angle += 360.0f;
+                    if (turn_angle > 180.0f) turn_angle -= 360.0f;
+                    yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     yaw_controller.enable();
@@ -255,7 +269,7 @@ bool is_this_cmd_completed() {
     if (curr_cmd == 'f') {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y;
-        float position_error = CELL_SIZE - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+        float position_error = target_distance - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
 
         if (position_error <= POSITION_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD &&
@@ -268,8 +282,8 @@ bool is_this_cmd_completed() {
     } else if (curr_cmd == 'o') {
         float angle_error = angleDifference(target_angle, current_angle);
 
-        sprintf(monitor_buffer, "c: %d\nt: %d", (int) current_angle, (int) target_angle);
-        show_one_line_monitor(monitor_buffer);
+        // sprintf(monitor_buffer, "c: %d\nt: %d", (int) current_angle, (int) target_angle);
+        // show_one_line_monitor(monitor_buffer);
 
         if (angle_error <= ANGLE_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD &&

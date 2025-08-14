@@ -3,6 +3,8 @@
 #include <string.h> // strtok, strncpy
 #include <stdlib.h> // atof
 
+// TODO: dont use buffers!
+
 namespace mtrn3100 {
 
 class CommandParser {
@@ -47,7 +49,7 @@ public:
   }
 
 private:
-  static const int MAX_COMMANDS = 10; // TODO: Adjust
+  static const int MAX_COMMANDS = 50; // TODO: Adjust
   char buffer[200];                   // holds raw input string
   char moveTypes[MAX_COMMANDS];       // stores the letter for each command
   float moveValues[MAX_COMMANDS];     // stores the numeric value for each command
