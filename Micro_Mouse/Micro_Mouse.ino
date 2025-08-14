@@ -233,11 +233,34 @@ void loop() {
         while(true){}
     }
 
+    // use simple if sentences to integrate lidar into self correction
+    // is there a wall on lefthand?
+    if (lidar_left <= BIGGEST_WALL_DISTANCE_THRESHOLD){
+        // calculate error = actual value - desired value
+        lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
+    } else {
+        lidar_err_left = 0;
+    }
+
+    // is there a wall on righthand?
+    if (lidar_right <= BIGGEST_WALL_DISTANCE_THRESHOLD){
+        // calculate error = actual value - desired value
+        lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
+    } else {
+        lidar_err_right = 0;
+    }
+
+    float lidar_offest = scale * (lidar_err_left - lidar_err_right);
+    // only use this in straight line motion
+    if (doing rotating){
+        lidar_offest = 0;
+    }
+
     // feedback control, dont change this part
     float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output); 
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output + lidar_offest); 
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output + + lidar_offest);
 
     motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
