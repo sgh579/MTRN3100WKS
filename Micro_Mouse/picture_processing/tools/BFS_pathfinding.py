@@ -234,19 +234,19 @@ def run_pathfinding_example(bfs_graph, image_path: str):
     return commands, viz_path
 
 # Modified section to add to your main script:
-if __name__ == '__main__':
-    # ... your existing code up to building the graph ...
+# if __name__ == '__main__':
+#     # ... your existing code up to building the graph ...
     
-    # After this line in your original code:
-    # bfs_graph = gg.graph # this is the graph to be used in bfs
+#     # After this line in your original code:
+#     # bfs_graph = gg.graph # this is the graph to be used in bfs
     
-    # Add the BFS pathfinding:
-    print("\n" + "="*50)
-    print("RUNNING BFS PATHFINDING")
-    print("="*50)
+#     # Add the BFS pathfinding:
+#     print("\n" + "="*50)
+#     print("RUNNING BFS PATHFINDING")
+#     print("="*50)
     
-    # Run pathfinding example
-    commands, viz_path = run_pathfinding_example(bfs_graph, save_path)
+#     # Run pathfinding example
+#     commands, viz_path = run_pathfinding_example(bfs_graph, save_path)
     
-    print(f"\nFinal Arduino commands to copy: {commands}")
-    print(f"Path visualization: {viz_path}")
+#     print(f"\nFinal Arduino commands to copy: {commands}")
+#     print(f"Path visualization: {viz_path}")
