@@ -1,7 +1,12 @@
+import os
+# os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import cv2
 import numpy as np
+from collections import deque
+# import networkx as nx
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
+from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 
 if __name__ == '__main__':
     # ============================
@@ -13,10 +18,33 @@ if __name__ == '__main__':
     #                     'bottom_left':(x,y), 'bottom_right':(x,y)} or None
     # ============================
     CornerF = CornerFinder()
-    corners = CornerF.pick_corners_with_roi("Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg")
+    # corners = CornerF.pick_corners_with_roi("/Users/naveen/Desktop/MicromouseMazeCamera.jpg")
+    # corners = CornerF.pick_corners_with_roi("Documents\\Github\\MTRN3100WKS-1\\Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg")
+    backup_image_file_path = "Micro_Mouse\\picture_processing\\images\\MicromouseMazeCamera.jpg"
+
+    # if we have camera 1
+    save_images_path = "Micro_Mouse\\picture_processing\\images\\"
+    camera_raw_save_image = os.path.join(save_images_path, "captured_image.jpg")
+
+    cap = cv2.VideoCapture(1)  # Camera ID 1
+    if cap.isOpened():
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            cv2.imwrite(camera_raw_save_image, frame)
+            print(f"Captured image from camera 1 and saved to: {camera_raw_save_image}")
+            original_image_file_path = camera_raw_save_image
+        else:
+            print("Camera 1 is open, but failed to read frame. Using original image instead.")
+            original_image_file_path = backup_image_file_path
+    else:
+        print("Camera 1 not detected. Using original image instead.")
+        original_image_file_path = backup_image_file_path
+
+    corners = CornerF.pick_corners_with_roi(original_image_file_path)
     if corners is None:
         print("Cancelled or failed.")
-    else:
+    else: 
         print(corners)
 
     # ============================
@@ -27,7 +55,7 @@ if __name__ == '__main__':
     # Output : A rectified image saved to disk; returns the output path.
     # ============================
     proj = Projection(out_size=(2160,2160), margin=120)
-    out_file = proj.warp_from_image("Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg", corners)
+    out_file = proj.warp_from_image(original_image_file_path, corners)
     print("Saved to:", out_file)
 
     # ============================
@@ -37,8 +65,8 @@ if __name__ == '__main__':
     # Note   : This step is for visual tuning; the pipeline below still
     #          produces its own binary using a fixed threshold.
     # ============================
-    tuner = ThresholdTuner()  
-    bw = tuner.run("MicromouseMazeCamera_projected_2160x2160.png", out_path="./safe_zone_binary_manual.png")
+    # tuner = ThresholdTuner()  
+    # bw = tuner.run("MicromouseMazeCamera_projected_2160x2160.png", out_path="./safe_zone_binary_manual.png")
 
     # ============================
     # Block 4 — Fixed-threshold binarization + morphology
@@ -74,6 +102,19 @@ if __name__ == '__main__':
     print("Saved to:", save_path)
 
     bfs_graph = gg.graph # this is the graph to be used in bfs
-# use BFS to generate a series of motion command to complete task 4.1 in format of extended cmd
-# it is expected to be copied into the source code of arduino
-# command list example: f18|o90|f18|f18|o0|
+    # use BFS to generate a series of motion command to complete task 4.1 in format of extended cmd
+    # it is expected to be copied into the source code of arduino
+    # command list example: f18|o90|f18|f18|o0|
+        #[x, y]
+
+    commands, viz_path = run_pathfinding_example(bfs_graph, save_path)
+    
+    print(f"\nFinal Arduino commands to copy: {commands}")
+    print(f"Path visualization: {viz_path}")
+
+
+
+
+
+
+    

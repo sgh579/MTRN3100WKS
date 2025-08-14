@@ -9,7 +9,19 @@
 #include <stdio.h>
 #include "PIDController.hpp"
 #include "Motor.hpp"
+#include "CommandParser.hpp"
 #include <math.h> 
+
+// TODO: not dealing with bounds very well - when starting from a big number and going to a small number, need to tell it to turn left or right
+// Note: i think its working?
+// char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
+// char *script = "o40|f50|o350|f50|o180|f50|o0";
+
+// Polygon
+char *script = "f80|o45|f80|o90|f80|o135|f80|o180|f80|o225|f80|o270|f80|o315|f80|o0";
+
+// Small angles script
+// char *script = "f100|o45|f50|o90|f30|o245|f100";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -37,9 +49,9 @@
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 20
+#define CMD_COMPLETE_STABLE_CYCLES 20 // TODO: ADJUST BACK TO 20
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 3.0f
+#define ANGLE_ERROR_THRESHOLD 10.0f
 #define MOTOR_OUTPUT_THRESHOLD 40
 #define YAW_OUTPUT_THRESHOLD 30.0f
 
@@ -48,19 +60,20 @@
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 0.1); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 0.1);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 1); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
 mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
+mtrn3100::CommandParser commands(script); // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+
 
 // Global variables
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
-int cmd_pointer = 0; // Pointer to the current command in the command sequence
-char commands[] = "lfrffrfl"; // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+char prev_cmd = '\0';
 
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0; 
@@ -137,49 +150,44 @@ void loop() {
 
     //modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
-    if (cmd_pointer == 0 || is_this_cmd_completed()) {
-        sprintf(monitor_buffer, "parsing  command[%d]: %c",cmd_pointer, commands[cmd_pointer]);
-        show_one_line_monitor(monitor_buffer);
+    if (prev_cmd == '\0' || is_this_cmd_completed()) {
+
         // are all commands completed?
-        if (cmd_pointer == sizeof(commands)-1) { 
+        if (commands.isEmpty()) { 
             cmd_sequence_completion_FLAG = true;
         } else {
+            sprintf(monitor_buffer, "command: %c%d", commands.getMoveType(), (int) round(commands.getMoveValue()));
+            show_one_line_monitor(monitor_buffer);
+
             // Record current state
             previous_X = encoder_odometry.getX();
             previous_Y = encoder_odometry.getY();
 
             // Set targets
-            char c = commands[cmd_pointer];
+            char c = commands.getMoveType();
+            float value = commands.getMoveValue();
             switch (c) {
                 case 'f':
-                    target_distance = CELL_SIZE;
+                    target_distance = value; // mm
+                    // target_distance = value * 10; // cm
                     target_angle = target_angle;
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.disable();
+                    yaw_controller.disable(); // TODO: Use lidar to adjust movement
 
                 break;
-                case 'l':
+                case 'o':
                     target_distance = 0;
-                    target_angle = target_angle + 90;
-                    target_angle = fmodf(target_angle, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    yaw_controller.zeroAndSetTarget(current_angle, 90);
+                    target_angle = fmodf(value + 360.0f, 360.0f);
+                    float turn_angle = target_angle - current_angle;
+                    if (turn_angle < -180.0f) turn_angle += 360.0f;
+                    if (turn_angle > 180.0f) turn_angle -= 360.0f;
+                    yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     yaw_controller.enable();
                     
-                break;
-                case 'r':
-                    target_distance = 0;
-                    target_angle = target_angle-90;
-                    yaw_controller.zeroAndSetTarget(current_angle, -90);
-                    target_angle = fmodf(target_angle, 360.0f);
-                    if (target_angle < 0) target_angle += 360.0f;
-                    motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
-                    motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.enable();
                 break;
                 default:
                     Serial.print("Invalid command: ");
@@ -188,15 +196,17 @@ void loop() {
                 break;
             }
 
+            prev_cmd = c; 
+
             //move to the next command
-            cmd_pointer++;
-        }
+            commands.next();
+        }        
 
         target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
     }
 
 
-    if(cmd_sequence_completion_FLAG) {
+    if (cmd_sequence_completion_FLAG) {
         Serial.println(F("[INFO] Command sequence completed. The robot stops."));
         show_one_line_monitor("Command sequence completed. ROBOT stopped");
         motor1.setPWM(0);
@@ -251,7 +261,7 @@ void loop() {
 
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
-    char curr_cmd = commands[cmd_pointer - 1];
+    char curr_cmd = prev_cmd;
     static int stable_counter = 0; // Count of consecutive cycles that meet the condition
 
     bool completed = false;
@@ -259,7 +269,7 @@ bool is_this_cmd_completed() {
     if (curr_cmd == 'f') {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y;
-        float position_error = CELL_SIZE - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+        float position_error = target_distance - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
 
         if (position_error <= POSITION_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD &&
@@ -269,8 +279,11 @@ bool is_this_cmd_completed() {
             stable_counter = 0;
         }
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
-    } else if (curr_cmd == 'l' || curr_cmd == 'r') {
+    } else if (curr_cmd == 'o') {
         float angle_error = angleDifference(target_angle, current_angle);
+
+        // sprintf(monitor_buffer, "c: %d\nt: %d", (int) current_angle, (int) target_angle);
+        // show_one_line_monitor(monitor_buffer);
 
         if (angle_error <= ANGLE_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD &&
@@ -338,7 +351,7 @@ class my_map {
         float x_on_ground;
         float y_on_ground;
 
-}
+};
 
 
 // better linear motion
