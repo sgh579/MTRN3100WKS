@@ -11,6 +11,7 @@
 #include "Motor.hpp"
 #include "CommandParser.hpp"
 #include <math.h> 
+#include <VL6180X.h>
 
 // TODO: not dealing with bounds very well - when starting from a big number and going to a small number, need to tell it to turn left or right
 // Note: i think its working?
@@ -68,7 +69,13 @@ mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
 mtrn3100::CommandParser commands(script); // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+VL6180X sensor1; // left
+VL6180X sensor2; // front
+VL6180X sensor3; // right
 
+int sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
+int sensor2_pin = A1; // ENABLE PIN FOR SENSOR 2 41
+int sensor3_pin = A2; // ENABLE PIN FOR SENSOR 3 42
 
 // Global variables
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
@@ -88,6 +95,10 @@ float target_motion_rotation_radians = 0; // Target motion rotation in radians, 
 float curr_X = 0; // Current X position of the robot based on odometry, updated in each loop iteration
 float curr_Y = 0;
 float current_angle = 0;
+
+int lidar_left = 0;
+int lidar_front = 0;
+int lidar_right = 0;
 
 // FLAGs
 bool cmd_sequence_completion_FLAG = false; 
@@ -132,6 +143,11 @@ void setup() {
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -0); // reverse it for vehicle's motion
     yaw_controller.zeroAndSetTarget(0, 0);
 
+    // lidar setup
+    Serial.println(F("Initializing lidar sensors..."));
+    lidarInitialize();
+    Serial.println("Done!\n");
+
     show_one_line_monitor("ROBOT setup completed");
 }
 
@@ -140,6 +156,10 @@ void loop() {
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
     // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
+    // assuming we can always successfully read value from lidar, without timeout issue
+    lidar_left = sensor1.readRangeSingleMillimeters();
+    lidar_front = sensor2.readRangeSingleMillimeters();
+    lidar_right = sensor3.readRangeSingleMillimeters();
 
     float current_angle_z = mpu.getAngleZ();
 
@@ -174,8 +194,7 @@ void loop() {
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.disable(); // TODO: Use lidar to adjust movement
-
+                    yaw_controller.disable(); 
                 break;
                 case 'o':
                     target_distance = 0;
@@ -257,6 +276,43 @@ void loop() {
 
     delay(5); // TODO: REMOVE THIS MAYBE?
 
+}
+
+void lidarInitialize() {
+    // SET UP ENABLE PINS AND DISABLE SENSORS
+    pinMode(sensor1_pin, OUTPUT);
+    pinMode(sensor2_pin, OUTPUT);
+    pinMode(sensor3_pin, OUTPUT);
+    digitalWrite(sensor1_pin, LOW);
+    digitalWrite(sensor2_pin, LOW);
+    digitalWrite(sensor3_pin, LOW);
+
+    // ENABLE FIRST SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor1_pin, HIGH);
+    delay(50);
+    sensor1.init();
+    sensor1.configureDefault();
+    sensor1.setTimeout(250);
+    sensor1.setAddress(0x40);
+    delay(50);
+
+    // ENABLE SECOND SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor2_pin, HIGH);
+    delay(50);
+    sensor2.init();
+    sensor2.configureDefault();
+    sensor2.setTimeout(250);
+    sensor2.setAddress(0x41);
+    delay(50);
+
+    // ENABLE THIRD SENSOR AND CHANGE THE ADDRESS 
+    digitalWrite(sensor3_pin, HIGH);
+    delay(50);
+    sensor3.init();
+    sensor3.configureDefault();
+    sensor3.setTimeout(250);
+    sensor3.setAddress(0x42);
+    delay(50);
 }
 
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
