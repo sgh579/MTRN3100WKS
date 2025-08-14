@@ -1,0 +1,1 @@
+IMAGE_FOLER = "Micro_Mouse\\picture_processing\\images\\"

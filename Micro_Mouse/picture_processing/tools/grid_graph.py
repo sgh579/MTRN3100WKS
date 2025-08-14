@@ -4,6 +4,8 @@ import numpy as np
 from pathlib import Path
 from typing import Tuple, Optional
 import math
+import os
+from tools.User_Configuration import IMAGE_FOLER
 
 class ThresholdTuner:
     def __init__(self, max_window=(1400, 900), auto_resize=True):
@@ -354,9 +356,8 @@ class Grid_Graph:
             cv2.putText(canvas, label, pos, cv2.FONT_HERSHEY_SIMPLEX, fs, (255, 255, 255), 1, cv2.LINE_AA)
 
         # 保存
-        p = Path(self.image_path)
         if out_path is None:
-            out_path = str(p.with_name(f"{p.stem}_grid_graph_{self.rows}x{self.cols}{p.suffix}"))
+            out_path = os.path.join(IMAGE_FOLER, "4_grid_graph.png")
         cv2.imwrite(out_path, canvas)
         return out_path
     def filter_edges_by_mask(self,

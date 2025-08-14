@@ -5,6 +5,8 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
+import os
+from tools.User_Configuration import IMAGE_FOLER
 
 class BFSPathfinder:
     def __init__(self, graph, grid_rows=9, grid_cols=9):
@@ -207,9 +209,9 @@ class BFSPathfinder:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
         
         # Save the visualization
-        if output_path is None:
-            p = Path(image_path)
-            output_path = str(p.with_name(f"{p.stem}_path_visualization{p.suffix}"))
+        
+        p = Path(image_path)
+        output_path = os.path.join(IMAGE_FOLER, "5_path_visualization.png")
         
         cv2.imwrite(output_path, canvas)
         return output_path
@@ -244,11 +246,11 @@ def run_pathfinding_example(bfs_graph, image_path: str, start, end):
     
     # Convert path to commands
     commands = pathfinder.path_to_commands(path)
-    print(f"Motion commands: {commands}")
+    # print(f"Motion commands: {commands}")
     
     # Visualize the path
     viz_path = pathfinder.visualize_path(image_path, path, start_pos, end_pos)
-    print(f"Path visualization saved to: {viz_path}")
+    # print(f"Path visualization saved to: {viz_path}")
     
     return commands, viz_path
 

@@ -3,7 +3,9 @@ import cv2
 import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
+import os
 from typing import Dict, Tuple, Optional, List
+from tools.User_Configuration import IMAGE_FOLER
 
 CornerMap = Dict[str, Tuple[int, int]]
 ORDER_NAMES = ["top_left", "top_right", "bottom_left", "bottom_right"]
@@ -220,7 +222,7 @@ class CornerFinder:
             cv2.circle(vis, (cx, cy), 10, (0, 0, 255), 2)
             cv2.putText(vis, name, (cx + 8, cy - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 1, cv2.LINE_AA)
-        cv2.imwrite("corner_pick_debug.png", vis)
+        cv2.imwrite(os.path.join(IMAGE_FOLER, "1_corner_pick_debug.png"), vis)
         cv2.destroyAllWindows()
         return dict(self._points)
     
@@ -273,7 +275,8 @@ class Projection:
         # 输出路径
         if out_path is None:
             stem = Path(image_path).stem
-            out_path = f"./{stem}_projected_{self.out_w}x{self.out_h}.png"
+            out_path = os.path.join(IMAGE_FOLER, "2_projected.png")
+            
 
         cv2.imwrite(out_path, warped)
         return out_path
