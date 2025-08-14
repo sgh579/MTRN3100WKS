@@ -18,7 +18,7 @@
 // char *script = "o40|f50|o350|f50|o180|f50|o0";
 
 // Polygon
-char *script = "f80|o45|f80|o90|f80|o135|f80|o180|f80|o225|f80|o270|f80|o315|f80|o0";
+char *script = "o270|f180|f180|f180|f180|f180|f180|o0|f180|f180|f180|f180|f180|f180|o0";
 
 // Small angles script
 // char *script = "f100|o45|f50|o90|f30|o245|f100";

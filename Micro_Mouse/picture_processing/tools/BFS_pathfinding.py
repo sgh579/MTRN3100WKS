@@ -71,7 +71,7 @@ class BFSPathfinder:
         print(f"No path found from {start_grid_pos} to {end_grid_pos}")
         return []
     
-    def path_to_commands(self, path: List[int], cell_size_mm: int = 18) -> str:
+    def path_to_commands(self, path: List[int], cell_size_mm: int = 180) -> str:
         """
         Convert path to motion commands
         
@@ -98,9 +98,9 @@ class BFSPathfinder:
             
             # Convert grid movement to direction
             if dx == 1 and dy == 0:      # Move right (East)
-                target_direction = 90
-            elif dx == -1 and dy == 0:   # Move left (West)
                 target_direction = 270
+            elif dx == -1 and dy == 0:   # Move left (West)
+                target_direction = 90
             elif dx == 0 and dy == -1:   # Move up (North)
                 target_direction = 0
             elif dx == 0 and dy == 1:    # Move down (South)

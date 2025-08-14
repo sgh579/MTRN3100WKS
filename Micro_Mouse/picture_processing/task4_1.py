@@ -9,6 +9,7 @@ from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Gr
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 
 if __name__ == '__main__':
+    print('4.1 starts')
     # ============================
     # Block 1 — Pick 4 corner markers (human-in-the-loop)
     # Purpose: Open an interactive window, let the user drag/select ROIs for
@@ -20,13 +21,14 @@ if __name__ == '__main__':
     CornerF = CornerFinder()
     # corners = CornerF.pick_corners_with_roi("/Users/naveen/Desktop/MicromouseMazeCamera.jpg")
     # corners = CornerF.pick_corners_with_roi("Documents\\Github\\MTRN3100WKS-1\\Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg")
-    backup_image_file_path = "Micro_Mouse\\picture_processing\\images\\MicromouseMazeCamera.jpg"
+    backup_image_file_path = "Micro_Mouse\\picture_processing\\images\\captured_image.jpg"
 
     # if we have camera 1
     save_images_path = "Micro_Mouse\\picture_processing\\images\\"
     camera_raw_save_image = os.path.join(save_images_path, "captured_image.jpg")
 
     cap = cv2.VideoCapture(1)  # Camera ID 1
+    print('trying to open the camera 1')
     if cap.isOpened():
         ret, frame = cap.read()
         cap.release()
@@ -65,9 +67,9 @@ if __name__ == '__main__':
     # Note   : This step is for visual tuning; the pipeline below still
     #          produces its own binary using a fixed threshold.
     # ============================
-    # tuner = ThresholdTuner()  
-    # bw = tuner.run("MicromouseMazeCamera_projected_2160x2160.png", out_path="./safe_zone_binary_manual.png")
-
+    tuner = ThresholdTuner()  
+    bw = tuner.run("captured_image_projected_2160x2160.png", out_path="./safe_zone_binary_manual.png")
+    threshold_selected_manually = 113
     # ============================
     # Block 4 — Fixed-threshold binarization + morphology
     # Purpose: Produce a clean “white = free space” mask from the rectified image.
@@ -76,9 +78,10 @@ if __name__ == '__main__':
     # Output : Binary mask saved to disk.
     # ============================
     sz = SafeZone(expect_size=(2160,2160), auto_resize=False,
-              threshold=160, close_kernel=5, close_iter=1,
+              threshold=threshold_selected_manually, close_kernel=5, close_iter=1,
               keep_largest=True, fill_holes=True)
-    out_file = sz.binarize("MicromouseMazeCamera_projected_2160x2160.png", "./safe_zone_binary.png")
+    # out_file = sz.binarize("MicromouseMazeCamera_projected_2160x2160.png", "./safe_zone_binary.png")
+    out_file = sz.binarize("captured_image_projected_2160x2160.png", "./safe_zone_binary.png")
 
     # ============================
     # Block 5 — Build grid graph and prune edges by mask
