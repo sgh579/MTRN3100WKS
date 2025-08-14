@@ -198,7 +198,7 @@ class BFSPathfinder:
         return output_path
 
 # Add this to your main script after building the graph:
-def run_pathfinding_example(bfs_graph, image_path: str):
+def run_pathfinding_example(bfs_graph, image_path: str, start, end):
     """
     Example function showing how to use the BFS pathfinder
     """
@@ -206,8 +206,10 @@ def run_pathfinding_example(bfs_graph, image_path: str):
     pathfinder = BFSPathfinder(bfs_graph, grid_rows=9, grid_cols=9)
     
     # Define start and end positions (grid coordinates)
-    start_pos = (1, 7)  # Grid position (x=1, y=7)
-    end_pos = (7, 1)    # Grid position (x=7, y=1)
+    # start_pos = (1, 7)  # Grid position (x=1, y=7)
+    # end_pos = (7, 1)    # Grid position (x=7, y=1)
+    start_pos = start  # Grid position (x=1, y=7)
+    end_pos = end    # Grid position (x=7, y=1)
     
     print(f"Finding path from {start_pos} to {end_pos}")
     
