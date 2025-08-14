@@ -9,7 +9,7 @@ from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Gr
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 from tools.User_Configuration import IMAGE_FOLER
 
-THRESHOLD_TUNER_ENABLE_FLAG = False
+THRESHOLD_TUNER_ENABLE_FLAG = True
 
 def main():
     print(' ############# 4.1 starts #############')
@@ -75,11 +75,17 @@ def main():
     # Note   : This step is for visual tuning; the pipeline below still
     #          produces its own binary using a fixed threshold.
     # ============================
-    if (THRESHOLD_TUNER_ENABLE_FLAG):
-        tuner = ThresholdTuner()  
-        bw = tuner.run(os.path.join(images_folder, "2_projected.png"), out_path=os.path.join(images_folder, "safe_zone_binary_manual.png"))
-    # threshold_selected_manually = 160 
-    threshold_selected_manually = 125
+    if THRESHOLD_TUNER_ENABLE_FLAG:
+        tuner = ThresholdTuner()
+        bw, T_final, invert_flag = tuner.run(
+            os.path.join(images_folder, "2_projected.png"),
+            out_path=os.path.join(images_folder, "safe_zone_binary_manual.png")
+        )
+        # 供后续计算使用
+        threshold_selected_manually = T_final
+    else:
+        threshold_selected_manually = 125
+
     # ============================
     # Block 4 — Fixed-threshold binarization + morphology
     # Purpose: Produce a clean “white = free space” mask from the rectified image.

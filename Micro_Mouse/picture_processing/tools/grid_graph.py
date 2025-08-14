@@ -11,12 +11,16 @@ class ThresholdTuner:
     def __init__(self, max_window=(1400, 900), auto_resize=True):
         self.max_w, self.max_h = max_window
         self.auto_resize = auto_resize
-        self.img = None          # 原图(BGR)
-        self.gray = None         # 灰度(原分辨率)
-        self.scale = 1.0         # 显示缩放比例
-        self.disp = None         # 用于显示的图
+        self.img = None
+        self.gray = None
+        self.scale = 1.0
+        self.disp = None
         self.win = "Threshold Tuner"
         self.out_path = "./binary.png"
+        # 新增：实时记录当前阈值与反相状态
+        self.current_T = 128
+        self.current_invert = 0
+        self.current_bw = None
 
     def _fit(self, img):
         h, w = img.shape[:2]
@@ -28,12 +32,13 @@ class ThresholdTuner:
         return img.copy(), 1.0
 
     def _update(self, _=None):
-        T = cv2.getTrackbarPos("Threshold", self.win)  # 0..255
-        invert = cv2.getTrackbarPos("Invert(0/1)", self.win)  # 0/1
+        # 读取并保存当前滑块值
+        self.current_T = cv2.getTrackbarPos("Threshold", self.win)   # 0..255
+        self.current_invert = cv2.getTrackbarPos("Invert(0/1)", self.win)  # 0/1
 
-        # 全局阈值
-        _, bw = cv2.threshold(self.gray, T, 255, cv2.THRESH_BINARY)
-        if invert == 1:
+        # 按当前阈值做全局阈值化
+        _, bw = cv2.threshold(self.gray, self.current_T, 255, cv2.THRESH_BINARY)
+        if self.current_invert == 1:
             bw = cv2.bitwise_not(bw)
 
         # 显示（按显示比例缩放）
@@ -43,7 +48,7 @@ class ThresholdTuner:
             show = cv2.resize(bw, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_NEAREST)
 
         cv2.imshow(self.win, show)
-        self.current_bw = bw  # 保留原分辨率结果，保存用
+        self.current_bw = bw  # 保留原分辨率结果
 
     def run(self, image_path: str, out_path: str = "./binary.png"):
         p = Path(image_path)
@@ -59,9 +64,9 @@ class ThresholdTuner:
         self.disp, self.scale = self._fit(self.img)
 
         cv2.namedWindow(self.win, cv2.WINDOW_NORMAL)
-        cv2.createTrackbar("Threshold", self.win, 128, 255, self._update)
-        cv2.createTrackbar("Invert(0/1)", self.win, 0, 1, self._update)
-
+        # 初始化滑块并触发一次更新
+        cv2.createTrackbar("Threshold", self.win, self.current_T, 255, self._update)
+        cv2.createTrackbar("Invert(0/1)", self.win, self.current_invert, 1, self._update)
         self._update()
 
         print("操作：拖动滑块调阈值；按 S 保存，Q/ESC 退出。")
@@ -73,8 +78,14 @@ class ThresholdTuner:
                 cv2.imwrite(self.out_path, self.current_bw)
                 print(f"已保存：{self.out_path}")
 
+        # 在关闭窗口前，取最终值（也可直接用 self.current_T/self.current_invert）
+        final_T = self.current_T
+        final_invert = self.current_invert
+        final_bw = self.current_bw
+
         cv2.destroyAllWindows()
-        return self.current_bw  # 返回二值图（原分辨率）
+        # 返回：二值图、最终阈值、是否反相
+        return final_bw, final_T, final_invert
     
 class SafeZone:
     def __init__(self,
