@@ -19,10 +19,18 @@
 // char *script = "o40|f50|o350|f50|o180|f50|o0";
 
 // Polygon
-char *script = "o270|f180|f180|f180|f180|f180|f180|o0|f180|f180|f180|f180|f180|f180|o0";
+// char *script = "o270|f18s0|f180|f180|f180|f180|f180|o0|f180|f180|f180|f180|f180|f180|o0";
 
 // Small angles script
 // char *script = "f100|o45|f50|o90|f30|o245|f100";
+
+// Straight script 
+// char *script = "f50|f50|f50|f50|f50|f50|f50";
+// char *script = "f300|f300|f300";
+
+char *script = "f1|o90|f540|o0|f180|o270|f180|o180|f180|o270|f360";
+
+
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -55,14 +63,16 @@ char *script = "o270|f180|f180|f180|f180|f180|f180|o0|f180|f180|f180|f180|f180|f
 #define ANGLE_ERROR_THRESHOLD 10.0f
 #define MOTOR_OUTPUT_THRESHOLD 40
 #define YAW_OUTPUT_THRESHOLD 30.0f
+#define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f // TODO: ADJUST
+#define DESIRED_WALL_DISTANCE 50.0f
 
 // Global variables
 
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 1); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 0.5); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 0.5);
 mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
@@ -233,34 +243,37 @@ void loop() {
         while(true){}
     }
 
-    // use simple if sentences to integrate lidar into self correction
-    // is there a wall on lefthand?
-    if (lidar_left <= BIGGEST_WALL_DISTANCE_THRESHOLD){
-        // calculate error = actual value - desired value
-        lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
-    } else {
-        lidar_err_left = 0;
-    }
+    float lidar_offset = 0;
+    if (prev_cmd == 'f') {
+        // use simple if sentences to integrate lidar into self correction
+        // is there a wall on lefthand?
+        float lidar_err_left;
+        if (lidar_left <= BIGGEST_WALL_DISTANCE_THRESHOLD){
+            // calculate error = actual value - desired value
+            lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
+        } else {
+            lidar_err_left = 0;
+        }
 
-    // is there a wall on righthand?
-    if (lidar_right <= BIGGEST_WALL_DISTANCE_THRESHOLD){
-        // calculate error = actual value - desired value
-        lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
-    } else {
-        lidar_err_right = 0;
-    }
+        float lidar_err_right;
+        // is there a wall on righthand?
+        if (lidar_right <= BIGGEST_WALL_DISTANCE_THRESHOLD){
+            // calculate error = actual value - desired value
+            lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
+        } else {
+            lidar_err_right = 0;
+        }
 
-    float lidar_offest = scale * (lidar_err_left - lidar_err_right);
-    // only use this in straight line motion
-    if (doing rotating){
-        lidar_offest = 0;
+        float scale = 0.2;
+        lidar_offset = scale * (lidar_err_left - lidar_err_right);
+
     }
 
     // feedback control, dont change this part
     float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output + lidar_offest); 
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output + + lidar_offest);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output - lidar_offset); 
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output - lidar_offset);
 
     motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
@@ -269,23 +282,23 @@ void loop() {
     motor2.setPWM(motor2_encoder_position_controller_output); 
 
 
-    // Debugging information
-    Serial.print(F("*****************************************loop "));
-    Serial.print(loop_counter);
-    Serial.println(F("*****************************************"));
-    Serial.print(F("[INFO] angle Z: "));
-    Serial.println(current_angle_z);
-    Serial.print(F("[INFO] yaw_controller_output: "));
-    Serial.println(yaw_controller_output);
-    Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
-    Serial.println(motor1_encoder_position_controller_output);
-    Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
-    Serial.println(motor2_encoder_position_controller_output);
+    // // Debugging information
+    // Serial.print(F("*****************************************loop "));
+    // Serial.print(loop_counter);
+    // Serial.println(F("*****************************************"));
+    // Serial.print(F("[INFO] angle Z: "));
+    // Serial.println(current_angle_z);
+    // Serial.print(F("[INFO] yaw_controller_output: "));
+    // Serial.println(yaw_controller_output);
+    // Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
+    // Serial.println(motor1_encoder_position_controller_output);
+    // Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
+    // Serial.println(motor2_encoder_position_controller_output);
 
-    Serial.print(F("[INFO] Encoder left radian: "));
-    Serial.println(encoder.getLeftRotation());
-    Serial.print(F("[INFO] Encoder right radian: "));
-    Serial.println(encoder.getRightRotation());
+    // Serial.print(F("[INFO] Encoder left radian: "));
+    // Serial.println(encoder.getLeftRotation());
+    // Serial.print(F("[INFO] Encoder right radian: "));
+    // Serial.println(encoder.getRightRotation());
 
     loop_counter++;
 
