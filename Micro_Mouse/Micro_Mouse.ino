@@ -26,9 +26,9 @@
 
 // Straight script 
 // char *script = "f50|f50|f50|f50|f50|f50|f50";
-// char *script = "f300|f300|f300";
+char *script = "f300|f300|f300";
 
-char *script = "f1|o90|f540|o0|f180|o270|f180|o180|f180|o270|f360";
+// char *script = "o270|f540|o0|f180|o270|f180|o180|f180|o270|f360";
 
 
 
@@ -71,8 +71,8 @@ char *script = "f1|o90|f540|o0|f180|o270|f180|o180|f180|o270|f360";
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 0.5); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 0.5);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 1); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
 mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
@@ -167,9 +167,6 @@ void loop() {
     mpu.update();
     // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
     // assuming we can always successfully read value from lidar, without timeout issue
-    lidar_left = sensor1.readRangeSingleMillimeters();
-    lidar_front = sensor2.readRangeSingleMillimeters();
-    lidar_right = sensor3.readRangeSingleMillimeters();
 
     float current_angle_z = mpu.getAngleZ();
 
@@ -244,7 +241,12 @@ void loop() {
     }
 
     float lidar_offset = 0;
+    
     if (prev_cmd == 'f') {
+        lidar_left = sensor1.readRangeSingleMillimeters();
+        lidar_front = sensor2.readRangeSingleMillimeters();
+        lidar_right = sensor3.readRangeSingleMillimeters();
+
         // use simple if sentences to integrate lidar into self correction
         // is there a wall on lefthand?
         float lidar_err_left;
@@ -272,33 +274,14 @@ void loop() {
     // feedback control, dont change this part
     float yaw_controller_output = yaw_controller.compute(current_angle_z);
 
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output - lidar_offset); 
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output - lidar_offset);
+    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output + lidar_offset); 
+    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output + lidar_offset);
 
     motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
 
     motor1.setPWM(motor1_encoder_position_controller_output); 
     motor2.setPWM(motor2_encoder_position_controller_output); 
-
-
-    // // Debugging information
-    // Serial.print(F("*****************************************loop "));
-    // Serial.print(loop_counter);
-    // Serial.println(F("*****************************************"));
-    // Serial.print(F("[INFO] angle Z: "));
-    // Serial.println(current_angle_z);
-    // Serial.print(F("[INFO] yaw_controller_output: "));
-    // Serial.println(yaw_controller_output);
-    // Serial.print(F("[INFO] motor1_encoder_position_controller_output: "));
-    // Serial.println(motor1_encoder_position_controller_output);
-    // Serial.print(F("[INFO] motor2_encoder_position_controller_output: "));
-    // Serial.println(motor2_encoder_position_controller_output);
-
-    // Serial.print(F("[INFO] Encoder left radian: "));
-    // Serial.println(encoder.getLeftRotation());
-    // Serial.print(F("[INFO] Encoder right radian: "));
-    // Serial.println(encoder.getRightRotation());
 
     loop_counter++;
 
