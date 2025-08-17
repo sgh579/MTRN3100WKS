@@ -13,9 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-// TODO: not dealing with bounds very well - when starting from a big number and going to a small number, need to tell it to turn left or right
-// Note: i think its working?
-// char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
+char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
 // char *script = "o40|f50|o350|f50|o180|f50|o0";
 
 // Polygon
@@ -26,8 +24,9 @@
 
 // Straight script 
 // char *script = "f50|f50|f50|f50|f50|f50|f50";
-char *script = "f300|f300|f300";
-
+// char *script = "o270|f100|f100|f100|f100";
+// lflfflflfrflflfr
+// char *script = "o90|f180|o180|f360|o270|f170|o0|f180|o270|f180|o0|f180|o90|f180|o0";
 // char *script = "o270|f540|o0|f180|o270|f180|o180|f180|o270|f360";
 
 
@@ -66,14 +65,28 @@ char *script = "f300|f300|f300";
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f // TODO: ADJUST
 #define DESIRED_WALL_DISTANCE 50.0f
 
-// Global variables
+// TESTING
+#define LIDAR_SMOOTHING_FACTOR 0.3f     // For sensor filtering
+#define WALL_FOLLOW_KP 0.15f            // Proportional gain for wall following
+#define WALL_FOLLOW_KD 0.05f            // Derivative gain for wall following
+#define COLLISION_THRESHOLD 35.0f       // Emergency stop distance (mm)
+#define WALL_DETECTION_THRESHOLD 80.0f // Maximum distance to consider a wall
+// #define DESIRED_WALL_DISTANCE 65.0f     // Optimal distance from wall (adjusted for your robot)
+#define LIDAR_MAX_CORRECTION 0.8f       // Maximum correction from LIDAR
+
+// Add these global variables for improved LIDAR handling
+float filtered_lidar_left = 0;
+float filtered_lidar_front = 0;
+float filtered_lidar_right = 0;
+float prev_wall_error = 0;  // For derivative control
+bool emergency_stop = false;
 
 // Global objects
-mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
+mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 1); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
-mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 1, 2); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 1, 2);
+mtrn3100::PIDController yaw_controller(0.05, 0.05, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -97,8 +110,6 @@ float previous_Y = 0;
 
 float target_distance = 0; // Target for the robot to travel. Change this value and it applies in the feedbacj control loop
 float target_angle = 0;
-
-float current_angle_z; // Current angle of the robot in the Z direction, used for orientation control
 
 float target_motion_rotation_radians = 0; // Target motion rotation in radians, calculated based on the target distance and robot specifications
 
@@ -165,17 +176,13 @@ void loop() {
     // Read the sensors
     encoder_odometry.update(encoder.getLeftRotation(),encoder.getRightRotation());
     mpu.update();
-    // yaw_controller.zeroAndSetTarget(current_angle_z, current_angle_z);
-    // assuming we can always successfully read value from lidar, without timeout issue
-
-    float current_angle_z = mpu.getAngleZ();
 
     // Take next instruction
     curr_X = encoder_odometry.getX();
     curr_Y = encoder_odometry.getY();
-    current_angle = current_angle_z;
+    current_angle = mpu.getAngleZ();
 
-    //modify the kinematic control target only when
+    // modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
     if (prev_cmd == '\0' || is_this_cmd_completed()) {
 
@@ -197,11 +204,11 @@ void loop() {
                 case 'f':
                     target_distance = value; // mm
                     // target_distance = value * 10; // cm
-                    target_angle = target_angle;
+                    target_angle = current_angle;
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.disable(); 
+                    // yaw_controller.disable(); 
                 break;
                 case 'o':
                     target_distance = 0;
@@ -212,7 +219,10 @@ void loop() {
                     yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    yaw_controller.enable();
+                    // yaw_controller.enable();
+
+                    sprintf(monitor_buffer, "t_a: %d, turn: %d, curr: %d", (int) target_angle, (int) turn_angle, (int) current_angle);
+                    show_one_line_monitor(monitor_buffer);
                     
                 break;
                 default:
@@ -239,49 +249,8 @@ void loop() {
         motor2.setPWM(0);
         while(true){}
     }
-
-    float lidar_offset = 0;
     
-    if (prev_cmd == 'f') {
-        lidar_left = sensor1.readRangeSingleMillimeters();
-        lidar_front = sensor2.readRangeSingleMillimeters();
-        lidar_right = sensor3.readRangeSingleMillimeters();
-
-        // use simple if sentences to integrate lidar into self correction
-        // is there a wall on lefthand?
-        float lidar_err_left;
-        if (lidar_left <= BIGGEST_WALL_DISTANCE_THRESHOLD){
-            // calculate error = actual value - desired value
-            lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
-        } else {
-            lidar_err_left = 0;
-        }
-
-        float lidar_err_right;
-        // is there a wall on righthand?
-        if (lidar_right <= BIGGEST_WALL_DISTANCE_THRESHOLD){
-            // calculate error = actual value - desired value
-            lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
-        } else {
-            lidar_err_right = 0;
-        }
-
-        float scale = 0.2;
-        lidar_offset = scale * (lidar_err_left - lidar_err_right);
-
-    }
-
-    // feedback control, dont change this part
-    float yaw_controller_output = yaw_controller.compute(current_angle_z);
-
-    motor1_encoder_position_controller.setTarget(target_motion_rotation_radians - yaw_controller_output + lidar_offset); 
-    motor2_encoder_position_controller.setTarget(-target_motion_rotation_radians - yaw_controller_output + lidar_offset);
-
-    motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-    motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
-
-    motor1.setPWM(motor1_encoder_position_controller_output); 
-    motor2.setPWM(motor2_encoder_position_controller_output); 
+    executeMovementControl();
 
     loop_counter++;
 
@@ -293,8 +262,7 @@ void loop() {
     // Stop the robot
     while (cmd_sequence_completion_FLAG) {}
 
-    delay(5); // TODO: REMOVE THIS MAYBE?
-
+    delay(5);
 }
 
 void lidarInitialize() {
@@ -336,30 +304,39 @@ void lidarInitialize() {
 
 // TODO:based on threshold, determine if the command is completed, affecting the accuracy
 bool is_this_cmd_completed() {
-    char curr_cmd = prev_cmd;
-    static int stable_counter = 0; // Count of consecutive cycles that meet the condition
-
+    static int stable_counter = 0;
     bool completed = false;
-
-    if (curr_cmd == 'f') {
+    
+    if (prev_cmd == 'f') {
         float delta_x = curr_X - previous_X;
         float delta_y = curr_Y - previous_Y;
-        float position_error = target_distance - sqrt(pow(delta_x, 2) + pow(delta_y, 2));
-
-        if (position_error <= POSITION_ERROR_THRESHOLD &&
-            abs(motor1_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD &&
-            abs(motor2_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD) {
+        float distance_traveled = sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+        float position_error = target_distance - distance_traveled;
+        
+        // Check if we've hit a wall unexpectedly
+        bool blocked_by_wall = (filtered_lidar_front < COLLISION_THRESHOLD + 10);
+        
+        // Standard completion criteria OR emergency wall detection
+        if ((position_error <= POSITION_ERROR_THRESHOLD &&
+             abs(motor1_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD &&
+             abs(motor2_encoder_position_controller_output) < MOTOR_OUTPUT_THRESHOLD) ||
+            blocked_by_wall) {
             stable_counter++;
         } else {
             stable_counter = 0;
         }
+        
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
-    } else if (curr_cmd == 'o') {
+        
+        if (blocked_by_wall && completed) {
+            sprintf(monitor_buffer, "Stopped by wall at %.0fmm", distance_traveled);
+            show_one_line_monitor(monitor_buffer);
+        }
+        
+    } else if (prev_cmd == 'o') {
+        // Turn completion logic remains the same
         float angle_error = angleDifference(target_angle, current_angle);
-
-        // sprintf(monitor_buffer, "c: %d\nt: %d", (int) current_angle, (int) target_angle);
-        // show_one_line_monitor(monitor_buffer);
-
+        
         if (angle_error <= ANGLE_ERROR_THRESHOLD &&
             abs(motor1_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD &&
             abs(motor2_encoder_position_controller_output) < YAW_OUTPUT_THRESHOLD) {
@@ -368,18 +345,18 @@ bool is_this_cmd_completed() {
             stable_counter = 0;
         }
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
-    } else {
-        stable_counter = 0;
     }
-
-    if (completed) stable_counter = 0; // reset the stable counter if the command is completed
+    
+    if (completed) {
+        stable_counter = 0;
+        yaw_controller.zeroAndSetTarget(current_angle, 0);
+        delay(10);
+    }
     return completed;
 }
 
 float normalizeAngle(float angle) {
-    float result = fmod(angle, 360.0f);
-    if (result < 0) result += 360.0f;
-    return result;
+    return fmod(angle + 360.0f, 360.0f);
 }
 
 float angleDifference(float a, float b) {
@@ -389,7 +366,7 @@ float angleDifference(float a, float b) {
     return diff;
 }
 
-// thisfunction shows one character array on the OLED display
+// this function shows one character array on the OLED display
 // it can't be called in high frequency
 void show_one_line_monitor(const char* str) {
     display.clearDisplay();
@@ -402,6 +379,181 @@ void show_one_line_monitor(const char* str) {
         i++;
     }
     display.display();
+}
+
+// Enhanced LIDAR reading with filtering and error handling
+void updateLidarReadings() {
+    // Read raw values with timeout handling
+    int raw_left = sensor1.readRangeSingleMillimeters();
+    int raw_front = sensor2.readRangeSingleMillimeters();
+    int raw_right = sensor3.readRangeSingleMillimeters();
+    
+    // Handle sensor timeouts (VL6180X returns 65535 on timeout)
+    if (raw_left > 300) raw_left = 300;  // Cap at reasonable maximum
+    if (raw_front > 300) raw_front = 300;
+    if (raw_right > 300) raw_right = 300;
+    
+    // Apply low-pass filtering to reduce noise
+    filtered_lidar_left = (1.0f - LIDAR_SMOOTHING_FACTOR) * filtered_lidar_left + 
+                          LIDAR_SMOOTHING_FACTOR * raw_left;
+    filtered_lidar_front = (1.0f - LIDAR_SMOOTHING_FACTOR) * filtered_lidar_front + 
+                           LIDAR_SMOOTHING_FACTOR * raw_front;
+    filtered_lidar_right = (1.0f - LIDAR_SMOOTHING_FACTOR) * filtered_lidar_right + 
+                           LIDAR_SMOOTHING_FACTOR * raw_right;
+    
+    // Update global variables for display/debugging
+    // lidar_left = (int)filtered_lidar_left;
+    // lidar_front = (int)filtered_lidar_front;
+    // lidar_right = (int)filtered_lidar_right;
+
+    lidar_left = (int) raw_left;
+    lidar_front = (int) raw_front;
+    lidar_right = (int) raw_right;
+}
+
+// Improved wall-following control with PD controller
+float calculateWallFollowingCorrection() {
+    if (prev_cmd != 'f') return 0.0f;  // Only apply during forward motion
+    
+    // Emergency collision detection
+    if (filtered_lidar_front < COLLISION_THRESHOLD) {
+        emergency_stop = true;
+        return 0.0f;
+    }
+    
+    float correction = 0.0f;
+    float wall_error = 0.0f;
+    
+    // Determine wall-following strategy based on available walls
+    bool left_wall = (filtered_lidar_left < WALL_DETECTION_THRESHOLD);
+    bool right_wall = (filtered_lidar_right < WALL_DETECTION_THRESHOLD);
+    
+    if (left_wall && right_wall) {
+        // Both walls present - center between them
+        float left_error = DESIRED_WALL_DISTANCE - filtered_lidar_left;
+        float right_error = DESIRED_WALL_DISTANCE - filtered_lidar_right;
+        wall_error = (left_error - right_error) * 0.5f;  // Average correction
+    }
+    else if (left_wall && !right_wall) {
+        // Only left wall - follow it
+        wall_error = DESIRED_WALL_DISTANCE - filtered_lidar_left;
+    }
+    else if (!left_wall && right_wall) {
+        // Only right wall - follow it  
+        wall_error = -(DESIRED_WALL_DISTANCE - filtered_lidar_right);
+    }
+    // If no walls detected, no correction needed
+    
+    // PD controller for smooth wall following
+    float derivative = wall_error - prev_wall_error;
+    correction = WALL_FOLLOW_KP * wall_error + WALL_FOLLOW_KD * derivative;
+    prev_wall_error = wall_error;
+    
+    // Limit correction magnitude
+    correction = constrain(correction, -LIDAR_MAX_CORRECTION, LIDAR_MAX_CORRECTION);
+    
+    return correction;
+}
+
+// Enhanced forward movement with dynamic speed control
+void executeForwardMovement() {
+    updateLidarReadings();
+    
+    // Check for emergency stop
+    if (emergency_stop || filtered_lidar_front < COLLISION_THRESHOLD) {
+        motor1_encoder_position_controller.setTarget(0);
+        motor2_encoder_position_controller.setTarget(0);
+        motor1.setPWM(0);
+        motor2.setPWM(0);
+        show_one_line_monitor("EMERGENCY STOP - Wall ahead!");
+        delay(500);
+        emergency_stop = false;  // Reset for next command
+        return;
+    }
+    
+    // Calculate wall-following correction
+    float lidar_correction = calculateWallFollowingCorrection();
+    
+    // Dynamic speed control based on front distance
+    float speed_factor = 1.0f;
+    if (filtered_lidar_front < 80.0f) {
+        speed_factor = 0.6f;  // Slow down when approaching walls
+    } else if (filtered_lidar_front < 120.0f) {
+        speed_factor = 0.8f;
+    }
+    
+    // Apply corrections to motor targets
+    float yaw_output = -0.01f * yaw_controller.compute(current_angle);
+    // lidar_correction = 0;
+    // yaw_output = 0;
+    
+    motor1_encoder_position_controller.setTarget(
+        (target_motion_rotation_radians * speed_factor)
+    );
+    motor2_encoder_position_controller.setTarget(
+        (-target_motion_rotation_radians * speed_factor)
+    );
+
+    // motor1_encoder_position_controller.setTarget(
+    //     (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    // );
+    // motor2_encoder_position_controller.setTarget(
+    //     (-target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    // );
+}
+
+// Improved turn execution with wall awareness
+// TODO: Fix turning
+void executeTurnMovement() {
+    // updateLidarReadings();
+    
+    // // During turns, we mainly use IMU but can still check for obstacles
+    // if (filtered_lidar_front < COLLISION_THRESHOLD) {
+    //     // If there's an obstacle ahead during turn, we might need to adjust
+    //     // For now, just proceed with the turn but log the warning
+    //     sprintf(monitor_buffer, "WARN: Obstacle during turn");
+    //     show_one_line_monitor(monitor_buffer);
+    // }
+    
+    // Standard turn execution
+    float yaw_output = -yaw_controller.compute(current_angle);
+    motor1_encoder_position_controller.setTarget(yaw_output);
+    motor2_encoder_position_controller.setTarget(yaw_output);
+}
+
+// Replace your main loop's movement control section with this:
+void executeMovementControl() {
+    if (cmd_sequence_completion_FLAG) {
+        motor1.setPWM(0);
+        motor2.setPWM(0);
+        show_one_line_monitor("Sequence complete");
+        while(true){}
+    }
+    
+    // Execute movement based on current command
+    if (prev_cmd == 'f') {
+        executeForwardMovement();
+    } else if (prev_cmd == 'o') {
+        executeTurnMovement();
+    }
+    
+    // Compute and apply motor outputs
+    motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
+    motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+    
+    motor1.setPWM(motor1_encoder_position_controller_output);
+    motor2.setPWM(motor2_encoder_position_controller_output);
+}
+
+// Diagnostic function to monitor LIDAR status
+void displayLidarStatus() {
+    if (loop_counter % 200 == 0) {  // Update display every 200 loops
+        sprintf(monitor_buffer, "L:%d F:%d R:%d", 
+                (int)filtered_lidar_left, 
+                (int)filtered_lidar_front, 
+                (int)filtered_lidar_right);
+        show_one_line_monitor(monitor_buffer);
+    }
 }
 
 
