@@ -126,8 +126,8 @@ def main():
     # command list example: f18|o90|f18|f18|o0|
         #[x, y]
 
-    start_pos = (1, 7)  # Grid position (x=1, y=7)
-    end_pos = (7, 4)    # Grid position (x=7, y=1)  
+    start_pos = (1, 6)  # Grid position (x=1, y=7)
+    end_pos = (5, 1)    # Grid position (x=7, y=1)  
     commands, viz_path = run_pathfinding_example(bfs_graph, save_path, start_pos, end_pos)
     
     print(f"\nFinal Arduino commands to copy: {commands}")
