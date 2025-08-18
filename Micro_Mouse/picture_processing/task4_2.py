@@ -9,12 +9,23 @@ from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Gr
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 from tools.User_Configuration import IMAGE_FOLER
 import random
-from tools.continuous_graph import draw_graph_on_image
+from tools.continuous_graph import draw_graph_on_image, process_continuous_maze
+
 
 THRESHOLD_TUNER_ENABLE_FLAG = True
 
+out_path_1 = os.path.join(IMAGE_FOLER, '1_corner.png')
+out_path_2 = os.path.join(IMAGE_FOLER, '2_projected.png')
+out_path_3 = os.path.join(IMAGE_FOLER, '3_safe_zone_binary.png')
+out_path_4 = os.path.join(IMAGE_FOLER, '4_grid_graph.png')
+# out_path_5 = os.path.join(IMAGE_FOLER, '1_corner.png')
+out_path_6 = os.path.join(IMAGE_FOLER, '6_cropped.png')
+out_path_7 = os.path.join(IMAGE_FOLER, '7_cropped_unsafe.png')
+out_path_8 = os.path.join(IMAGE_FOLER, '8_combined_continuous_maze.png')
+out_path_9 = os.path.join(IMAGE_FOLER, '9_mixed_graph_on_img.png')
+
 def main():
-    print(' ############# 4.1 starts #############')
+    print(' ############# 4.2 starts #############')
 
     # change to the desired workspace
     wks_path = 'x:/1_Projects/UNSW_MSC/MTRN3100/MTRN3100WKS/'
@@ -56,8 +67,7 @@ def main():
     if corners is None:
         print("Cancelled or failed.")
         return
-    else: 
-        print(corners)
+
 
     # ============================
     # Block 2 — Perspective warp (projection)
@@ -67,8 +77,9 @@ def main():
     # Output : A rectified image saved to disk; returns the output path.
     # ============================
     proj = Projection(out_size=(2160,2160), margin=120)
-    out_file = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
-    print("Saved to:", out_file)
+    output_img = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
+    cv2.imwrite(out_path_2, output_img)
+
 
     # ============================
     # Block 3 — Manual threshold tuning (preview only)
@@ -98,101 +109,54 @@ def main():
     sz = SafeZone(expect_size=(2160,2160), auto_resize=False,
               threshold=threshold_selected_manually, close_kernel=5, close_iter=1,
               keep_largest=True, fill_holes=True)
-    # out_file = sz.binarize("MicromouseMazeCamera_projected_2160x2160.png", "./safe_zone_binary.png")
-    out_file = sz.binarize(os.path.join(images_folder, "2_projected.png"), os.path.join(images_folder, "3_safe_zone_binary.png"))
+
+    output_img = sz.binarize(out_path_2)
+    cv2.imwrite(out_path_3, output_img)
 
 
     # generate the grid part
-    gg = Grid_Graph(os.path.join(images_folder, "3_safe_zone_binary.png"), rows=9, cols=9, connectivity=4)
+    gg = Grid_Graph(out_path_3, rows=9, cols=9, connectivity=4)
     G = gg.build()
     kept, removed = gg.filter_edges_by_mask(os.path.join(images_folder, "3_safe_zone_binary.png"),
                                             white_thresh=200,      
                                             line_thickness=3,      
                                             require_ratio=1.0)     
     print(f"kept={kept}, removed={removed}")
-    save_path = gg.render()   
-    print("Saved to:", save_path)
+    output_img = gg.render()   
+    cv2.imwrite(out_path_4, output_img)
+
+    # move it upside
+    continuous_maze_top_left_cell = (2, 2)
+    continuous_maze_bottom_right_cell = (continuous_maze_top_left_cell[0]+4, continuous_maze_top_left_cell[1]+4)
 
     # delete those nodes inside continuous maze
     cg = gg.graph
-    for i in range(2, 7):
-        for j in range(2, 7):
+    for i in range(continuous_maze_top_left_cell[0], continuous_maze_bottom_right_cell[0]+1):
+        for j in range(continuous_maze_top_left_cell[1], continuous_maze_bottom_right_cell[1]+1):
             cg.remove_node(cg.find_node_id(i, j))
 
 
-    # 读取图片
-    img = cv2.imread(os.path.join(images_folder, "3_safe_zone_binary.png"))
+    paths = process_continuous_maze(
+        graph=cg,
+        in_image_path=out_path_3,
+        out_crop_path=out_path_6,
+        out_unsafe_path=out_path_7,
+        out_combined_path=out_path_8,
+        top_left_cell=continuous_maze_top_left_cell,
+        bottom_right_cell=continuous_maze_bottom_right_cell,
+        cell_px=240,
+        unsafe_kernel_size=30,
+        unsafe_iterations=3,
+        node_margin_px=50,
+        division=20,
+        fully_connect=True,     # 大图请改 False，或替换成 k-NN
+        edge_weight=10.0
+    )
 
-    if img is None:
-        raise IOError(f"无法读取图像: {image_path}")
+    print("Done:", paths)
 
-    # 定义裁剪区域 (y1:y2, x1:x2)
-    x1, y1 = 480, 480
-    x2, y2 = 1680, 1680
-
-    # 裁剪
-    cropped = img[y1:y2, x1:x2]
-    cv2.imwrite(os.path.join(images_folder, "6_cropped.png"), cropped)
-
-    # 生成unsafe_zone
-    continuous_original_bin_image = cv2.imread(os.path.join(images_folder, "6_cropped.png"), cv2.IMREAD_COLOR) 
-
-    gray_map = cv2.cvtColor(continuous_original_bin_image, cv2.COLOR_BGR2GRAY)
-    _, binary_map = cv2.threshold(gray_map, 127, 255, cv2.THRESH_BINARY_INV)
-    
-    unsafe_kernel_size = 30 # obtained by intuition, could be too large
-    unsafe_iterations = 3
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (unsafe_kernel_size, unsafe_kernel_size))
-    dilated_map = cv2.dilate(binary_map, kernel, iterations=unsafe_iterations)
-
-    H, W = binary_map.shape
-    cropped_unsafe = np.ones((H, W, 3), dtype=np.uint8) * 255
-
-    dilated_mask = dilated_map == 255
-    obstacle_mask = binary_map == 255
-
-    cropped_unsafe[dilated_mask] = [0, 0, 255]    # Red
-    cropped_unsafe[obstacle_mask] = [0, 0, 0]     # Black
-
-    # cropped_unsafe = cv2.cvtColor(cropped_unsafe, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(os.path.join(images_folder, "7_cropped_unsafe.png"), cropped_unsafe)
-
-    # combine
-    img[y1:y2, x1:x2] = cropped_unsafe
-    cv2.imwrite(os.path.join(images_folder, "8_combined_continuous_maze.png"), img)
-
-    # now create nodes inside the continuous maze
-    x_min, y_min = 550, 550
-    x_maxm, y_maxm = 1600, 1600
-    # nodes in continuous maze get index from 1000
-    division = 20
-    for row in range(division):
-        for column in range(division):
-            unit_width = (x_maxm - x_min)/division
-            nid = 1000 + row*division + column
-            px = round(x_min + column*unit_width)
-            py = round(y_min + row*unit_width)
-
-            cg.add_node(nid, px, py, gx=None, gy=None)
-            # maybe not use this way to generate nodes
-    # 相互连接所有continuous nodes，以用BFS求得最小跳
-    for node in cg.nodes:
-        this_node_id = cg.nodes[node].get_ID() 
-        # 排除standard中的node
-        if this_node_id < 1000:
-            continue
-        for target_node in cg.nodes:
-            target_node_id = cg.nodes[target_node].get_ID() 
-            if target_node_id == this_node_id:
-                continue
-            if target_node_id < 1000:
-                continue
-            if target_node_id in cg.edges[this_node_id]:
-                continue
-            cg.add_edge(this_node_id, target_node_id, 10)
-        
-    draw_graph_on_image(cg, os.path.join(images_folder, '3_safe_zone_binary.png'), os.path.join(images_folder, '9_mixed_graph_on_img.png'))
+    output_img = draw_graph_on_image(cg, out_path_8)
+    cv2.imwrite(out_path_9, output_img)
 
 
 if __name__ == '__main__':
