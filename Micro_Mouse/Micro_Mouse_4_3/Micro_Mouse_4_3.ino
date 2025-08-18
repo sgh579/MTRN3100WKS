@@ -231,8 +231,8 @@ void executeCommand(char command, float value, float curr_x, float curr_y, float
     previous_X = curr_x;
     previous_Y = curr_y;
     
-    sprintf(monitor_buffer, "Maze cmd: %c%.0f", command, value);
-    show_one_line_monitor(monitor_buffer);
+    // sprintf(monitor_buffer, F("Maze cmd: %c%.0f"), command, value);
+    // show_one_line_monitor(monitor_buffer);
     
     switch (command) {
         case 'f':

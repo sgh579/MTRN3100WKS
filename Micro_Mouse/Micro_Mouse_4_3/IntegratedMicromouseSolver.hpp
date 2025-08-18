@@ -16,6 +16,12 @@
 #define WALL_DISTANCE_THRESHOLD 80.0f
 #define DESIRED_WALL_DISTANCE 50.0f
 
+// Masks
+#define NORTH_MASK 0b0001
+#define EAST_MASK 0b0010
+#define SOUTH_MASK 0b0100
+#define WEST_MASK 0b1000
+
 // Direction constants
 enum Direction
 {
@@ -36,46 +42,33 @@ enum MazeState
 // Cell structure
 struct Cell
 {
-    bool north_wall = false;
-    bool east_wall = false;
-    bool south_wall = false;
-    bool west_wall = false;
+    unsigned char walls = 0;
     bool visited = false;
-    int flood_value = -1;
+    int8_t flood_value = -1;
 
-    bool hasWall(Direction dir) const
-    {
-        switch (dir)
-        {
-        case NORTH:
-            return north_wall;
-        case EAST:
-            return east_wall;
-        case SOUTH:
-            return south_wall;
-        case WEST:
-            return west_wall;
-        default:
-            return true;
+    bool hasWall(Direction dir) const {
+        switch (dir) {
+            case NORTH: return walls & NORTH_MASK;
+            case EAST:  return walls & EAST_MASK;
+            case SOUTH: return walls & SOUTH_MASK;
+            case WEST:  return walls & WEST_MASK;
+            default:    return true;
         }
     }
 
-    void setWall(Direction dir, bool hasWall)
-    {
-        switch (dir)
-        {
-        case NORTH:
-            north_wall = hasWall;
-            break;
-        case EAST:
-            east_wall = hasWall;
-            break;
-        case SOUTH:
-            south_wall = hasWall;
-            break;
-        case WEST:
-            west_wall = hasWall;
-            break;
+    void setWall(Direction dir, bool hasWall) {
+        uint8_t mask = 0;
+        switch (dir) {
+            case NORTH: mask = NORTH_MASK; break;
+            case EAST:  mask = EAST_MASK;  break;
+            case SOUTH: mask = SOUTH_MASK; break;
+            case WEST:  mask = WEST_MASK;  break;
+        }
+
+        if (hasWall) {
+            walls |= mask;   // set bit
+        } else {
+            walls &= ~mask;  // clear bit
         }
     }
 };
@@ -94,7 +87,7 @@ struct Position
 class SimpleQueue
 {
 private:
-    Position data[MAX_QUEUE_SIZE];
+    Position PROGMEM data[MAX_QUEUE_SIZE];
     int front_idx, rear_idx, size;
 
 public:
@@ -131,7 +124,7 @@ public:
 class SimpleStack
 {
 private:
-    Position data[MAX_STACK_SIZE];
+    Position PROGMEM data[MAX_STACK_SIZE];
     int top_idx;
 
 public:
