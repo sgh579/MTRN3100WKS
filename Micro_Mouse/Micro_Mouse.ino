@@ -13,8 +13,8 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
-// char *script = "o40|f50|o350|f50|o180|f50|o0";
+char *script = "o90|o180|o270|o0|o90|o180|o270|o0";
+
 
 // Polygon
 // char *script = "o270|f18s0|f180|f180|f180|f180|f180|o0|f180|f180|f180|f180|f180|f180|o0";
@@ -59,7 +59,7 @@ char *script = "f180|o90|f180|o180|f180|o270|f180|o0";
 // Cycle threshold required for instruction completion determination
 #define CMD_COMPLETE_STABLE_CYCLES 20 // TODO: ADJUST BACK TO 20
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 10.0f
+#define ANGLE_ERROR_THRESHOLD 1.0f
 #define MOTOR_OUTPUT_THRESHOLD 40
 #define YAW_OUTPUT_THRESHOLD 30.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f // TODO: ADJUST
@@ -86,7 +86,7 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(35, 1, 2); // 0.05
 mtrn3100::PIDController motor2_encoder_position_controller(35, 1, 2);
-mtrn3100::PIDController yaw_controller(0.05, 0.05, 0);
+mtrn3100::PIDController yaw_controller(0.03, 0.1, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -516,7 +516,7 @@ void executeTurnMovement() {
     // }
     
     // Standard turn execution
-    float yaw_output = -yaw_controller.compute(current_angle);
+    float yaw_output = -0.5 * yaw_controller.compute(current_angle);
     motor1_encoder_position_controller.setTarget(yaw_output);
     motor2_encoder_position_controller.setTarget(yaw_output);
 }
