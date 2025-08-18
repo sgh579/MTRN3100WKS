@@ -13,6 +13,16 @@ from tools.continuous_graph import draw_graph_on_image
 
 THRESHOLD_TUNER_ENABLE_FLAG = True
 
+out_path_1 = os.path.join(IMAGE_FOLER, '1_corner.png')
+out_path_2 = os.path.join(IMAGE_FOLER, '2_projected.png')
+out_path_3 = os.path.join(IMAGE_FOLER, '3_safe_zone_binary.png')
+out_path_4 = os.path.join(IMAGE_FOLER, '4_grid_graph.png')
+# out_path_5 = os.path.join(IMAGE_FOLER, '1_corner.png')
+out_path_6 = os.path.join(IMAGE_FOLER, '6_cropped.png')
+out_path_7 = os.path.join(IMAGE_FOLER, '7_cropped_unsafe.png')
+out_path_8 = os.path.join(IMAGE_FOLER, '8_combined_continuous_maze.png')
+out_path_9 = os.path.join(IMAGE_FOLER, '9_mixed_graph_on_img.png')
+
 def main():
     print(' ############# 4.2 starts #############')
 
@@ -56,8 +66,7 @@ def main():
     if corners is None:
         print("Cancelled or failed.")
         return
-    else: 
-        print(corners)
+
 
     # ============================
     # Block 2 — Perspective warp (projection)
@@ -67,8 +76,9 @@ def main():
     # Output : A rectified image saved to disk; returns the output path.
     # ============================
     proj = Projection(out_size=(2160,2160), margin=120)
-    out_file = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
-    print("Saved to:", out_file)
+    output_img = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
+    cv2.imwrite(out_path_2, output_img)
+
 
     # ============================
     # Block 3 — Manual threshold tuning (preview only)
@@ -98,20 +108,21 @@ def main():
     sz = SafeZone(expect_size=(2160,2160), auto_resize=False,
               threshold=threshold_selected_manually, close_kernel=5, close_iter=1,
               keep_largest=True, fill_holes=True)
-    # out_file = sz.binarize("MicromouseMazeCamera_projected_2160x2160.png", "./safe_zone_binary.png")
-    out_file = sz.binarize(os.path.join(images_folder, "2_projected.png"), os.path.join(images_folder, "3_safe_zone_binary.png"))
+
+    output_img = sz.binarize(out_path_2)
+    cv2.imwrite(out_path_3, output_img)
 
 
     # generate the grid part
-    gg = Grid_Graph(os.path.join(images_folder, "3_safe_zone_binary.png"), rows=9, cols=9, connectivity=4)
+    gg = Grid_Graph(out_path_3, rows=9, cols=9, connectivity=4)
     G = gg.build()
     kept, removed = gg.filter_edges_by_mask(os.path.join(images_folder, "3_safe_zone_binary.png"),
                                             white_thresh=200,      
                                             line_thickness=3,      
                                             require_ratio=1.0)     
     print(f"kept={kept}, removed={removed}")
-    save_path = gg.render()   
-    print("Saved to:", save_path)
+    output_img = gg.render()   
+    cv2.imwrite(out_path_4, output_img)
 
     # delete those nodes inside continuous maze
     cg = gg.graph
@@ -132,7 +143,7 @@ def main():
 
     # 裁剪
     cropped = img[y1:y2, x1:x2]
-    cv2.imwrite(os.path.join(images_folder, "6_cropped.png"), cropped)
+    cv2.imwrite(out_path_6, cropped)
 
     # 生成unsafe_zone
     continuous_original_bin_image = cv2.imread(os.path.join(images_folder, "6_cropped.png"), cv2.IMREAD_COLOR) 
@@ -156,11 +167,11 @@ def main():
     cropped_unsafe[obstacle_mask] = [0, 0, 0]     # Black
 
     # cropped_unsafe = cv2.cvtColor(cropped_unsafe, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(os.path.join(images_folder, "7_cropped_unsafe.png"), cropped_unsafe)
+    cv2.imwrite(out_path_7, cropped_unsafe)
 
     # combine
     img[y1:y2, x1:x2] = cropped_unsafe
-    cv2.imwrite(os.path.join(images_folder, "8_combined_continuous_maze.png"), img)
+    cv2.imwrite(out_path_8, img)
 
     # now create nodes inside the continuous maze
     x_min, y_min = 550, 550
@@ -192,7 +203,7 @@ def main():
                 continue
             cg.add_edge(this_node_id, target_node_id, 10)
         
-    draw_graph_on_image(cg, os.path.join(images_folder, '3_safe_zone_binary.png'), os.path.join(images_folder, '9_mixed_graph_on_img.png'))
+    draw_graph_on_image(cg, out_path_3, out_path_9)
 
 
 if __name__ == '__main__':

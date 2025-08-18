@@ -147,13 +147,6 @@ class CornerFinder:
                 cv2.circle(vis, (cx, cy), 10, (0, 0, 255), 2, cv2.LINE_AA)
                 cv2.putText(vis, ORDER_NAMES[i], (cx + 10, cy - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-
-            out_dir = globals().get("IMAGE_FOLDER", globals().get("IMAGE_FOLER", "."))  # 兼容你之前的变量名
-            os.makedirs(out_dir, exist_ok=True)
-            ok = cv2.imwrite(os.path.join(out_dir, "1_corner_click_debug.png"), vis)
-            if not ok:
-                print("[WARN] Failed to write 1_corner_click_debug.png")
-
             return result
 
         finally:
@@ -176,8 +169,7 @@ class Projection:
 
     def warp_from_image(self,
                         image_path: str,
-                        corners: CornerMap,
-                        out_path: Optional[str] = None) -> str:
+                        corners: CornerMap) -> np.ndarray:
         """
         corners: {'top_left':(x,y), 'top_right':(x,y), 'bottom_left':(x,y), 'bottom_right':(x,y)}
         保存到当前目录，返回输出文件路径。
@@ -205,14 +197,7 @@ class Projection:
         M = cv2.getPerspectiveTransform(src, dst)
         warped = cv2.warpPerspective(img, M, (self.out_w, self.out_h), flags=cv2.INTER_LINEAR)
 
-        # 输出路径
-        if out_path is None:
-            stem = Path(image_path).stem
-            out_path = os.path.join(IMAGE_FOLER, "2_projected.png")
-            
-
-        cv2.imwrite(out_path, warped)
-        return out_path
+        return warped
 
 if __name__ == "__main__":
     CornerF = CornerFinder()

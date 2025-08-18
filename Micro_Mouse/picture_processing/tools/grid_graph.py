@@ -114,7 +114,7 @@ class SafeZone:
                              f"Enable auto_resize=True to resize automatically.")
         return cv2.resize(img, (self.expect_w, self.expect_h), interpolation=cv2.INTER_AREA)
 
-    def binarize(self, image_path: str, out_path: str) -> str:
+    def binarize(self, image_path: str) -> np.ndarray:
         p = Path(image_path)
         if not p.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
@@ -150,9 +150,8 @@ class SafeZone:
             cv2.floodFill(inv, mask, (0, 0), 255)       # 从边界连通的“外背景”填充为白
             holes = cv2.bitwise_not(inv)                 # 现在的白=原先的内孔洞
             bw = cv2.bitwise_or(bw, holes)               # 白区并上孔洞 → 实心
-
-        cv2.imwrite(str(out_path), bw)
-        return str(out_path)
+        
+        return bw
 
 class DisplayGridOnImg:
     """
@@ -325,7 +324,7 @@ class Grid_Graph:
         self.graph = G
         return G
 
-    def render(self, out_path: Optional[str] = None) -> str:
+    def render(self) -> np.ndarray:
         """在原图上绘制：红色网格线、绿色边线、放大3倍直径的节点；保存"""
         if self.img is None or self.graph is None or self._centers is None:
             raise RuntimeError("Call build() before render().")
@@ -366,11 +365,7 @@ class Grid_Graph:
             cv2.putText(canvas, label, pos, cv2.FONT_HERSHEY_SIMPLEX, fs, (0, 0, 0), 3, cv2.LINE_AA)
             cv2.putText(canvas, label, pos, cv2.FONT_HERSHEY_SIMPLEX, fs, (255, 255, 255), 1, cv2.LINE_AA)
 
-        # 保存
-        if out_path is None:
-            out_path = os.path.join(IMAGE_FOLER, "4_grid_graph.png")
-        cv2.imwrite(out_path, canvas)
-        return out_path
+        return canvas
     def filter_edges_by_mask(self,
                              mask_image_path: str,
                              white_thresh: int = 200,
