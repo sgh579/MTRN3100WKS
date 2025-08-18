@@ -9,7 +9,8 @@ from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Gr
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 from tools.User_Configuration import IMAGE_FOLER
 import random
-from tools.continuous_graph import draw_graph_on_image
+from tools.continuous_graph import draw_graph_on_image, process_continuous_maze
+
 
 THRESHOLD_TUNER_ENABLE_FLAG = True
 
@@ -135,79 +136,27 @@ def main():
             cg.remove_node(cg.find_node_id(i, j))
 
 
-    # 读取图片
-    img = cv2.imread(out_path_3)
+    paths = process_continuous_maze(
+        graph=cg,
+        in_image_path=out_path_3,
+        out_crop_path=out_path_6,
+        out_unsafe_path=out_path_7,
+        out_combined_path=out_path_8,
+        top_left_cell=continuous_maze_top_left_cell,
+        bottom_right_cell=continuous_maze_bottom_right_cell,
+        cell_px=240,
+        unsafe_kernel_size=30,
+        unsafe_iterations=3,
+        node_margin_px=50,
+        division=20,
+        fully_connect=True,     # 大图请改 False，或替换成 k-NN
+        edge_weight=10.0
+    )
 
-    if img is None:
-        raise IOError(f"无法读取图像: {image_path}")
+    print("Done:", paths)
 
-    # 定义裁剪区域 
-    x1, y1 = continuous_maze_top_left_cell[0] * 240, continuous_maze_top_left_cell[1] * 240
-    x2, y2 = (continuous_maze_bottom_right_cell[0]+1) * 240, (continuous_maze_bottom_right_cell[1]+1) * 240
-
-    # 裁剪
-    cropped = img[y1:y2, x1:x2]
-    cv2.imwrite(out_path_6, cropped)
-
-    # 生成unsafe_zone
-    continuous_original_bin_image = cv2.imread(os.path.join(images_folder, "6_cropped.png"), cv2.IMREAD_COLOR) 
-
-    gray_map = cv2.cvtColor(continuous_original_bin_image, cv2.COLOR_BGR2GRAY)
-    _, binary_map = cv2.threshold(gray_map, 127, 255, cv2.THRESH_BINARY_INV)
-    
-    unsafe_kernel_size = 30 # obtained by intuition, could be too large
-    unsafe_iterations = 3
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (unsafe_kernel_size, unsafe_kernel_size))
-    dilated_map = cv2.dilate(binary_map, kernel, iterations=unsafe_iterations)
-
-    H, W = binary_map.shape
-    cropped_unsafe = np.ones((H, W, 3), dtype=np.uint8) * 255
-
-    dilated_mask = dilated_map == 255
-    obstacle_mask = binary_map == 255
-
-    cropped_unsafe[dilated_mask] = [0, 0, 255]    # Red
-    cropped_unsafe[obstacle_mask] = [0, 0, 0]     # Black
-
-    # cropped_unsafe = cv2.cvtColor(cropped_unsafe, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(out_path_7, cropped_unsafe)
-
-    # combine
-    img[y1:y2, x1:x2] = cropped_unsafe
-    cv2.imwrite(out_path_8, img)
-
-    # now create nodes inside the continuous maze
-    x_min, y_min = x1+50, y1+50
-    x_maxm, y_maxm = x2-50, y2-50
-    # nodes in continuous maze get index from 1000
-    division = 20
-    for row in range(division):
-        for column in range(division):
-            unit_width = (x_maxm - x_min)/division
-            nid = 1000 + row*division + column
-            px = round(x_min + column*unit_width)
-            py = round(y_min + row*unit_width)
-
-            cg.add_node(nid, px, py, gx=None, gy=None)
-            # maybe not use this way to generate nodes
-    # 相互连接所有continuous nodes，以用BFS求得最小跳
-    for node in cg.nodes:
-        this_node_id = cg.nodes[node].get_ID() 
-        # 排除standard中的node
-        if this_node_id < 1000:
-            continue
-        for target_node in cg.nodes:
-            target_node_id = cg.nodes[target_node].get_ID() 
-            if target_node_id == this_node_id:
-                continue
-            if target_node_id < 1000:
-                continue
-            if target_node_id in cg.edges[this_node_id]:
-                continue
-            cg.add_edge(this_node_id, target_node_id, 10)
-        
-    draw_graph_on_image(cg, out_path_8, out_path_9)
+    output_img = draw_graph_on_image(cg, out_path_8)
+    cv2.imwrite(out_path_9, output_img)
 
 
 if __name__ == '__main__':
