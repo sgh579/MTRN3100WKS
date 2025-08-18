@@ -124,22 +124,26 @@ def main():
     output_img = gg.render()   
     cv2.imwrite(out_path_4, output_img)
 
+    # move it upside
+    continuous_maze_top_left_cell = (2, 2)
+    continuous_maze_bottom_right_cell = (continuous_maze_top_left_cell[0]+4, continuous_maze_top_left_cell[1]+4)
+
     # delete those nodes inside continuous maze
     cg = gg.graph
-    for i in range(2, 7):
-        for j in range(2, 7):
+    for i in range(continuous_maze_top_left_cell[0], continuous_maze_bottom_right_cell[0]+1):
+        for j in range(continuous_maze_top_left_cell[1], continuous_maze_bottom_right_cell[1]+1):
             cg.remove_node(cg.find_node_id(i, j))
 
 
     # 读取图片
-    img = cv2.imread(os.path.join(images_folder, "3_safe_zone_binary.png"))
+    img = cv2.imread(out_path_3)
 
     if img is None:
         raise IOError(f"无法读取图像: {image_path}")
 
-    # 定义裁剪区域 (y1:y2, x1:x2)
-    x1, y1 = 480, 480
-    x2, y2 = 1680, 1680
+    # 定义裁剪区域 
+    x1, y1 = continuous_maze_top_left_cell[0] * 240, continuous_maze_top_left_cell[1] * 240
+    x2, y2 = (continuous_maze_bottom_right_cell[0]+1) * 240, (continuous_maze_bottom_right_cell[1]+1) * 240
 
     # 裁剪
     cropped = img[y1:y2, x1:x2]
@@ -174,8 +178,8 @@ def main():
     cv2.imwrite(out_path_8, img)
 
     # now create nodes inside the continuous maze
-    x_min, y_min = 550, 550
-    x_maxm, y_maxm = 1600, 1600
+    x_min, y_min = x1+50, y1+50
+    x_maxm, y_maxm = x2-50, y2-50
     # nodes in continuous maze get index from 1000
     division = 20
     for row in range(division):
@@ -203,7 +207,7 @@ def main():
                 continue
             cg.add_edge(this_node_id, target_node_id, 10)
         
-    draw_graph_on_image(cg, out_path_3, out_path_9)
+    draw_graph_on_image(cg, out_path_8, out_path_9)
 
 
 if __name__ == '__main__':
