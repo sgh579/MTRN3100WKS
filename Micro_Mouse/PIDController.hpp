@@ -10,6 +10,7 @@ public:
 
     // Compute the output signal required from the current/actual value.
     float compute(float input) {
+        if (!turn_on_flag) return 0.0f; 
       
         curr_time = micros();
         dt = static_cast<float>(curr_time - prev_time) / 1e6;
@@ -24,11 +25,7 @@ public:
 
         prev_error = error;
 
-        if (turn_on_flag == true) {
-            return output;
-        } else {
-            return 0;
-        }
+        return output;
         
     }
 
@@ -48,13 +45,12 @@ public:
     // The first argument becomes the new zero reference point.
     // Target is the setpoint value.
     void zeroAndSetTarget(float zero, float target) {
-        prev_time = micros();
         zero_ref = zero;
         setpoint = target;
     }
 
     void setTarget(float target)
-    {
+    {  
         setpoint = target;
     }
 
@@ -69,6 +65,15 @@ public:
     void enable() {
         turn_on_flag = true;
     }
+
+    void reset(){
+        prev_time = micros();
+        curr_time = prev_time;
+        prev_error = 0;
+        setpoint = 0;
+        zero_ref = 0;
+    }
+
 
 public:
     uint32_t prev_time, curr_time = micros();

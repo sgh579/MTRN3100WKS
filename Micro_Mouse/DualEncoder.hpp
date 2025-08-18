@@ -10,7 +10,7 @@ namespace mtrn3100 {
 
 class DualEncoder {
 public:
-    DualEncoder(uint8_t enc1, uint8_t enc2,uint8_t enc3, uint8_t enc4) : mot1_int(enc1), mot1_dir(enc2), mot2_int(enc3), mot2_dir(enc4) {
+    DualEncoder(uint8_t enc1, uint8_t enc2, uint8_t enc3, uint8_t enc4) : mot1_int(enc1), mot1_dir(enc2), mot2_int(enc3), mot2_dir(enc4) {
         instance = this;  // Store the instance pointer
         pinMode(mot1_int, INPUT_PULLUP);
         pinMode(mot1_dir, INPUT_PULLUP);
