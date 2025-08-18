@@ -178,14 +178,7 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
-                                    
-                    float turn_angle = value - fmod(current_angle, 360.0f);
-                    if (turn_angle > 180) turn_angle -= 360;
-                    if (turn_angle < -180) turn_angle += 360;
-                    
-                    target_angle = turn_angle;
-
-                    // yaw_controller.reset();
+                    target_angle = value;
                     yaw_controller.zeroAndSetTarget(0, target_angle); 
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
