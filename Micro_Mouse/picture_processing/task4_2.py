@@ -117,14 +117,44 @@ def main():
         for j in range(2, 7):
             cg.remove_node(cg.find_node_id(i, j))
 
-    bfs_graph = cg 
 
-    start_pos = (1, 6) 
-    end_pos = (5, 1)   
-    commands, viz_path = run_pathfinding_example(bfs_graph, save_path, start_pos, end_pos)
+    # 读取图片
+    img = cv2.imread(os.path.join(images_folder, "3_safe_zone_binary.png"))
+
+    if img is None:
+        raise IOError(f"无法读取图像: {image_path}")
+
+    # 定义裁剪区域 (y1:y2, x1:x2)
+    x1, y1 = 468, 468
+    x2, y2 = 1638, 1638
+
+    # 裁剪
+    cropped = img[y1:y2, x1:x2]
+    cv2.imwrite(os.path.join(images_folder, "6_cropped.png"), cropped)
+
+    # 生成unsafe_zone
+    continuous_original_bin_image = cv2.imread(os.path.join(images_folder, "6_cropped.png"), cv2.IMREAD_COLOR) 
+
+    gray_map = cv2.cvtColor(continuous_original_bin_image, cv2.COLOR_BGR2GRAY)
+    _, binary_map = cv2.threshold(gray_map, 127, 255, cv2.THRESH_BINARY_INV)
     
-    print(f"\nFinal Arduino commands to copy: {commands}")
-    print(f"Path visualization: {viz_path}")
+    unsafe_kernel_size = 30 # obtained by intuition, could be too large
+    unsafe_iterations = 3
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (unsafe_kernel_size, unsafe_kernel_size))
+    dilated_map = cv2.dilate(binary_map, kernel, iterations=unsafe_iterations)
+
+    H, W = binary_map.shape
+    cropped_unsafe = np.ones((H, W, 3), dtype=np.uint8) * 255
+
+    dilated_mask = dilated_map == 255
+    obstacle_mask = binary_map == 255
+
+    cropped_unsafe[dilated_mask] = [0, 0, 255]    # Red
+    cropped_unsafe[obstacle_mask] = [0, 0, 0]     # Black
+
+    # cropped_unsafe = cv2.cvtColor(cropped_unsafe, cv2.COLOR_BGR2RGB)
+    cv2.imwrite(os.path.join(images_folder, "7_cropped_unsafe.png"), cropped_unsafe)
 
 if __name__ == '__main__':
     main()
