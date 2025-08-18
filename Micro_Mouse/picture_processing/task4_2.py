@@ -52,7 +52,7 @@ def main():
     #                     'bottom_left':(x,y), 'bottom_right':(x,y)} or None
     # ============================
     CornerF = CornerFinder()
-    corners = CornerF.pick_corners_with_roi(os.path.join(images_folder, raw_image))
+    corners = CornerF.pick_corners_by_clicks(os.path.join(images_folder, raw_image))
     if corners is None:
         print("Cancelled or failed.")
         return
@@ -163,7 +163,7 @@ def main():
     cv2.imwrite(os.path.join(images_folder, "8_combined_continuous_maze.png"), img)
 
     # now create nodes inside the continuous maze
-    x_min, y_min = 500, 500
+    x_min, y_min = 550, 550
     x_maxm, y_maxm = 1600, 1600
     # nodes in continuous maze get index from 1000
     division = 20
@@ -192,7 +192,7 @@ def main():
                 continue
             cg.add_edge(this_node_id, target_node_id, 10)
         
-    draw_graph_on_image(cg, os.path.join(images_folder, '2_projected.png'), os.path.join(images_folder, '9_mixed_graph_on_img.png'))
+    draw_graph_on_image(cg, os.path.join(images_folder, '3_safe_zone_binary.png'), os.path.join(images_folder, '9_mixed_graph_on_img.png'))
 
 
 if __name__ == '__main__':

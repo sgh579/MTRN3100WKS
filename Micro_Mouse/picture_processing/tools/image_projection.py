@@ -225,6 +225,126 @@ class CornerFinder:
         cv2.imwrite(os.path.join(IMAGE_FOLER, "1_corner_pick_debug.png"), vis)
         cv2.destroyAllWindows()
         return dict(self._points)
+    def pick_corners_by_clicks(self, file_path: str) -> Optional[dict]:
+        """
+        纯鼠标点击依次选择四个角点。
+        操作：
+        - 左键：添加角点（顺序按 ORDER_NAMES）
+        - z / Backspace：撤销上一个角点
+        - r：清空重来
+        - Enter：若已选满 4 点则确认返回
+        - q / Esc：取消并退出（返回 None）
+
+        返回：{ name: (x,y), ... } —— 原图坐标（像素）
+        """
+        p = Path(file_path)
+        if not p.exists():
+            print(f"[WARN] File not found: {file_path}")
+            return None
+
+        img = cv2.imread(str(p), cv2.IMREAD_COLOR)
+        if img is None:
+            print(f"[WARN] Cannot read image: {str(p)}")
+            return None
+
+        assert hasattr(self, "_win"), "Window name self._win not set."
+        assert hasattr(self, "rp") and hasattr(self.rp, "max_window_w") and hasattr(self.rp, "max_window_h"), "Runtime params missing."
+        assert len(ORDER_NAMES) >= 4, "ORDER_NAMES must have at least 4 entries."
+
+        # 状态
+        self._img = img
+        self._disp, self._scale = self._fit_window(img, self.rp.max_window_w, self.rp.max_window_h)
+        H, W = img.shape[:2]
+        clicked_pts_disp = []   # 存在显示坐标系（便于画图）
+        clicked_pts_orig = []   # 存在原图坐标系（最终返回）
+
+        # --- 绘制函数 ---
+        def _draw():
+            disp = self._disp.copy()
+            # 画已选点与序号
+            for i, (dx, dy) in enumerate(clicked_pts_disp):
+                cv2.circle(disp, (dx, dy), 8, (0, 0, 255), 2, cv2.LINE_AA)
+                label = ORDER_NAMES[i] if i < len(ORDER_NAMES) else str(i + 1)
+                cv2.putText(disp, label, (dx + 10, dy - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+            # 指引文字
+            tip = "LMB: add | z/Backspace: undo | r: reset | Enter: confirm | q/Esc: quit"
+            cv2.putText(disp, tip, (10, 25),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow(self._win, disp)
+
+        # --- 鼠标回调：从显示坐标换算回原图坐标 ---
+        def _on_mouse(event, x, y, flags, userdata):
+            if event == cv2.EVENT_LBUTTONDOWN:
+                if len(clicked_pts_disp) >= 4:
+                    return
+                # 显示坐标 -> 原图坐标
+                ox = int(round(x / self._scale))
+                oy = int(round(y / self._scale))
+                # 边界钳制
+                ox = max(0, min(W - 1, ox))
+                oy = max(0, min(H - 1, oy))
+                clicked_pts_disp.append((x, y))
+                clicked_pts_orig.append((ox, oy))
+                _draw()
+
+        # --- 交互循环 ---
+        cv2.namedWindow(self._win, cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback(self._win, _on_mouse)
+
+        try:
+            _draw()
+            while True:
+                key = cv2.waitKey(20) & 0xFFFF
+
+                if key in (27, ord('q')):  # 退出
+                    return None
+
+                if key in (ord('z'), 8):   # 撤销 (Backspace=8)
+                    if clicked_pts_disp:
+                        clicked_pts_disp.pop()
+                        clicked_pts_orig.pop()
+                        _draw()
+
+                if key == ord('r'):        # 重置
+                    clicked_pts_disp.clear()
+                    clicked_pts_orig.clear()
+                    _draw()
+
+                if key in (13, 10):        # Enter 确认
+                    if len(clicked_pts_orig) < 4:
+                        print(f"[INFO] Need 4 points, currently {len(clicked_pts_orig)}.")
+                        continue
+                    break
+
+                # 也可自动：点满 4 个自动退出
+                if len(clicked_pts_orig) >= 4:
+                    break
+
+            # 组装结果（按 ORDER_NAMES 命名）
+            result = {}
+            for i in range(4):
+                name = ORDER_NAMES[i]
+                result[name] = clicked_pts_orig[i]
+
+            # 保存调试图（画在原图上）
+            vis = self._img.copy()
+            for i in range(4):
+                cx, cy = result[ORDER_NAMES[i]]
+                cv2.circle(vis, (cx, cy), 10, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.putText(vis, ORDER_NAMES[i], (cx + 10, cy - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+            out_dir = globals().get("IMAGE_FOLDER", globals().get("IMAGE_FOLER", "."))  # 兼容你之前的变量名
+            os.makedirs(out_dir, exist_ok=True)
+            ok = cv2.imwrite(os.path.join(out_dir, "1_corner_click_debug.png"), vis)
+            if not ok:
+                print("[WARN] Failed to write 1_corner_click_debug.png")
+
+            return result
+
+        finally:
+            cv2.destroyAllWindows()
     
 
 class Projection:
