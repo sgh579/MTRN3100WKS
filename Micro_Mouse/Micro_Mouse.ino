@@ -13,7 +13,12 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "o90|o180|o270|o0|o90|o180|o270|o0";
+// s series of rotation
+// char *script = "o90|o180|o270|o0|o90|o180|o270|o0";
+
+// go along the wall, and turn around
+// and do it again and again
+char *script = "f400|o180|f400|o0|f400|o180|f400|o0";
 
 
 // Polygon
@@ -181,11 +186,6 @@ void loop() {
     curr_X = encoder_odometry.getX();
     curr_Y = encoder_odometry.getY();
     current_angle = mpu.getAngleZ();
-    if (current_angle > 360){
-        current_angle -= 360;
-    } else if (current_angle <0) {
-        current_angle += 360;
-    }
 
     // modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
@@ -218,11 +218,11 @@ void loop() {
                 case 'o':
                     target_distance = 0;
                     target_angle = value;
-                    // float turn_angle = target_angle - current_angle;
-                    // if (turn_angle < -180.0f) turn_angle += 360.0f;
-                    // if (turn_angle > 180.0f) turn_angle -= 360.0f;
+                    float turn_angle = target_angle - current_angle;
+                    if (turn_angle < -180.0f) turn_angle += 360.0f;
+                    if (turn_angle > 180.0f) turn_angle -= 360.0f;
 
-                    yaw_controller.zeroAndSetTarget(0, target_angle); // TODO: ADJUST FOR NEGATIVES
+                    yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     // yaw_controller.enable();
