@@ -13,7 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f400|o180|f400|o0|f400|o180|f400|o0";
+char *script = "o0|o90|o0|o90|o0|o90|o0|o90|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -40,7 +40,7 @@ char *script = "f400|o180|f400|o0|f400|o180|f400|o0";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 20 
+#define CMD_COMPLETE_STABLE_CYCLES 50 
 #define POSITION_ERROR_THRESHOLD 5.0f
 #define ANGLE_ERROR_THRESHOLD 1.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
@@ -270,12 +270,8 @@ bool is_this_cmd_completed() {
         float distance_traveled = sqrt(pow(delta_x, 2) + pow(delta_y, 2));
         float position_error = target_distance - distance_traveled;
         
-        // Check if we've hit a wall unexpectedly
-        bool blocked_by_wall = (filtered_lidar_front < COLLISION_THRESHOLD + 10);
-        
         // Standard completion criteria OR emergency wall detection
-        if ((position_error <= POSITION_ERROR_THRESHOLD && ) ||
-            blocked_by_wall) {
+        if (position_error <= POSITION_ERROR_THRESHOLD) {
             stable_counter++;
         } else {
             stable_counter = 0;
@@ -283,7 +279,7 @@ bool is_this_cmd_completed() {
         
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
         
-        if (blocked_by_wall && completed) {
+        if (completed) {
             sprintf(monitor_buffer, "Stopped by wall at %.0fmm", distance_traveled);
             show_one_line_monitor(monitor_buffer);
         }
@@ -354,12 +350,8 @@ float calculateWallFollowingCorrection() {
     float correction = 0.0f;
     float wall_error = 0.0f;
     
-    // Determine wall-following strategy based on available walls
-    // put this to the head
-    bool LEFT_WALL_DETECTED_FLAG 
-    bool RIGHT_WALL_DETECTED_FLAG 
-    
     // to compute lidar_offset
+    return 0;
 }
 
 // Enhanced forward movement with dynamic speed control
