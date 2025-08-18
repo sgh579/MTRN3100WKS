@@ -13,7 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "o0|o90|o0|o90|o0|o90|o0|o90|o0";
+char *script = "o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -40,7 +40,7 @@ char *script = "o0|o90|o0|o90|o0|o90|o0|o90|o0";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 40 
+#define CMD_COMPLETE_STABLE_CYCLES 2000 
 #define POSITION_ERROR_THRESHOLD 5.0f
 #define ANGLE_ERROR_THRESHOLD 1.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
@@ -51,7 +51,7 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(35, 1, 2); // 0.05
 mtrn3100::PIDController motor2_encoder_position_controller(35, 1, 2);
-mtrn3100::PIDController yaw_controller(0.03, 0.1, 0);
+mtrn3100::PIDController yaw_controller(0.02, 0.1, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -178,13 +178,14 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
-                    target_angle = value;
-                    float turn_angle = target_angle - current_angle;
-                    while (turn_angle < -180.0f) turn_angle += 360.0f;
-                    while (turn_angle > 180.0f) turn_angle -= 360.0f;
+                    
+                    float turn_angle = value - current_angle;
+                    while (turn_angle < -200.0f) turn_angle += 360.0f;
+                    while (turn_angle > 200.0f) turn_angle -= 360.0f;
+                    target_angle = current_angle + turn_angle;
 
-                    yaw_controller.reset();
-                    yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
+                    // yaw_controller.reset();
+                    yaw_controller.zeroAndSetTarget(current_angle, target_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
 
@@ -292,7 +293,7 @@ bool is_this_cmd_completed() {
         
     } else if (prev_cmd == 'o') {
         // Turn completion logic remains the same
-        float angle_error = angleDifference(target_angle, current_angle);
+        float angle_error = target_angle - current_angle;
         
         if (angle_error <= ANGLE_ERROR_THRESHOLD ) {
             stable_counter++;
@@ -308,17 +309,6 @@ bool is_this_cmd_completed() {
         delay(10);
     }
     return completed;
-}
-
-float normalizeAngle(float angle) {
-    return fmod(angle + 360.0f, 360.0f);
-}
-
-float angleDifference(float a, float b) {
-    float diff = normalizeAngle(a - b);
-    if (diff > 180.0f)
-        diff = 360.0f - diff;
-    return diff;
 }
 
 // this function shows one character array on the OLED display
