@@ -181,6 +181,11 @@ void loop() {
     curr_X = encoder_odometry.getX();
     curr_Y = encoder_odometry.getY();
     current_angle = mpu.getAngleZ();
+    if (current_angle > 360){
+        current_angle -= 360;
+    } else if (current_angle <0) {
+        current_angle += 360;
+    }
 
     // modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
@@ -212,16 +217,17 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
-                    target_angle = fmodf(value + 360.0f, 360.0f);
-                    float turn_angle = target_angle - current_angle;
-                    if (turn_angle < -180.0f) turn_angle += 360.0f;
-                    if (turn_angle > 180.0f) turn_angle -= 360.0f;
-                    yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
+                    target_angle = value;
+                    // float turn_angle = target_angle - current_angle;
+                    // if (turn_angle < -180.0f) turn_angle += 360.0f;
+                    // if (turn_angle > 180.0f) turn_angle -= 360.0f;
+
+                    yaw_controller.zeroAndSetTarget(0, target_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
                     // yaw_controller.enable();
 
-                    sprintf(monitor_buffer, "t_a: %d, turn: %d, curr: %d", (int) target_angle, (int) turn_angle, (int) current_angle);
+                    sprintf(monitor_buffer, "t_a: %d, curr: %d", (int) target_angle, (int) current_angle);
                     show_one_line_monitor(monitor_buffer);
                     
                 break;
