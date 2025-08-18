@@ -219,8 +219,8 @@ void loop() {
                     target_distance = 0;
                     target_angle = value;
                     float turn_angle = target_angle - current_angle;
-                    if (turn_angle < -180.0f) turn_angle += 360.0f;
-                    if (turn_angle > 180.0f) turn_angle -= 360.0f;
+                    while (turn_angle < -180.0f) turn_angle += 360.0f;
+                    while (turn_angle > 180.0f) turn_angle -= 360.0f;
 
                     yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
