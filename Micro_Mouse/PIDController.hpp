@@ -45,13 +45,12 @@ public:
     // The first argument becomes the new zero reference point.
     // Target is the setpoint value.
     void zeroAndSetTarget(float zero, float target) {
-        prev_time = micros();
         zero_ref = zero;
         setpoint = target;
     }
 
     void setTarget(float target)
-    {
+    {  
         setpoint = target;
     }
 
@@ -66,6 +65,15 @@ public:
     void enable() {
         turn_on_flag = true;
     }
+
+    void reset(){
+        prev_time = micros();
+        curr_time = prev_time;
+        prev_error = 0;
+        setpoint = 0;
+        zero_ref = 0;
+    }
+
 
 public:
     uint32_t prev_time, curr_time = micros();

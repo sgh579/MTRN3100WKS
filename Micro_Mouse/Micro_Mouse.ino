@@ -40,7 +40,7 @@ char *script = "o0|o90|o0|o90|o0|o90|o0|o90|o0";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 50 
+#define CMD_COMPLETE_STABLE_CYCLES 40 
 #define POSITION_ERROR_THRESHOLD 5.0f
 #define ANGLE_ERROR_THRESHOLD 1.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
@@ -85,6 +85,8 @@ float current_angle = 0;
 int lidar_left = 0;
 int lidar_front = 0;
 int lidar_right = 0;
+
+int delay_between_cmd = 0;
 
 // FLAGs
 bool cmd_sequence_completion_FLAG = false; 
@@ -169,6 +171,7 @@ void loop() {
                 case 'f':
                     target_distance = value; // mm
                     target_angle = current_angle;
+                    yaw_controller.reset();
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
@@ -180,6 +183,7 @@ void loop() {
                     while (turn_angle < -180.0f) turn_angle += 360.0f;
                     while (turn_angle > 180.0f) turn_angle -= 360.0f;
 
+                    yaw_controller.reset();
                     yaw_controller.zeroAndSetTarget(current_angle, turn_angle); // TODO: ADJUST FOR NEGATIVES
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
@@ -197,6 +201,8 @@ void loop() {
             commands.next();
         }        
         target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
+        delay_between_cmd = 50;
+        // delay for a while after one cmd is executed
     }
 
     if (cmd_sequence_completion_FLAG) {
@@ -395,6 +401,12 @@ void MovementControl() {
     // Compute and apply motor outputs
     motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+
+    if (delay_between_cmd > 0){
+        delay_between_cmd --;
+        motor1_encoder_position_controller_output = 0;
+        motor2_encoder_position_controller_output = 0;
+    }
     
     motor1.setPWM(motor1_encoder_position_controller_output);
     motor2.setPWM(motor2_encoder_position_controller_output);
