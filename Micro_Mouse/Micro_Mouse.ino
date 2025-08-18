@@ -13,11 +13,11 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|";
+char *script = "f50|o90|f50|o180|f50|o270|f50|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
-#define LENGTH_TO_ROTATION_SCALE 1 // to be adjusted based on test
+#define LENGTH_TO_ROTATION_SCALE 0.83 // to be adjusted based on test
 #define LENGTH_OF_AXLE 82 // length of the axle in mm, used for distance calculations
 
 //These are the pins set up
@@ -362,7 +362,7 @@ void forward_Update_Target() {
         (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
     );
     motor2_encoder_position_controller.setTarget(
-        (-target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+        (-target_motion_rotation_radians * speed_factor) - yaw_output + lidar_correction
     );
 }
 
