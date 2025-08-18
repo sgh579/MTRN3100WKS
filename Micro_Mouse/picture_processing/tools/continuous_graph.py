@@ -40,7 +40,7 @@ def is_line_clear_global(safe_mask_global: np.ndarray, p0_abs, p1_abs) -> bool:
     在整张图里判断两点连线是否完全经过“安全像素”（白色）。
     p0_abs / p1_abs: (px, py) 绝对像素坐标
     """
-    H, W = safe_mask_global.shape
+    H, W = safe_mask_global.shape[0:2]
     x0, y0 = int(round(p0_abs[0])), int(round(p0_abs[1]))
     x1, y1 = int(round(p1_abs[0])), int(round(p1_abs[1]))
     # 若端点越界，视为不可连（也可自行裁剪到边界）
@@ -219,7 +219,10 @@ def process_continuous_maze(
 
     # 7) 连接边
     if fully_connect:
-        safe_mask_global = build_global_safe_mask(img_combined)  # 或者你指定的全图标注
+
+        gray = cv2.cvtColor(img_combined, cv2.COLOR_BGR2GRAY)
+        _, safe_mask_global = cv2.threshold(gray, 254, 255, cv2.THRESH_BINARY)
+
         continuous_ids = [nid for nid in graph.nodes if nid >= 1000]
         for nid in continuous_ids:
             if nid not in graph.edges:
@@ -237,64 +240,74 @@ def process_continuous_maze(
                 if is_line_clear_global(safe_mask_global, p_u, p_v):
                     graph.add_edge(u, v, edge_weight)
 
-        # 9)
-        # id 小于1000的属于grid node
-        # 已知一个矩阵范围的点属于continuous nodes的范围        
-        # 遍历最靠近这个范围的那一圈grid nodes
-        # 对于每一个grid node,找到continuous里面的一个最接近的，中间没有障碍物的continuous进行连接，权重为10
-        safe_mask_global = build_global_safe_mask(img_combined)
+    # 9)
+    # id 小于1000的属于grid node
+    # 已知一个矩阵范围的点属于continuous nodes的范围        
+    # 遍历最靠近这个范围的那一圈grid nodes
+    # 对于每一个grid node,找到continuous里面的一个最接近的，中间没有障碍物的continuous进行连接，权重为10
+    # safe_mask_global = build_global_safe_mask(img_combined)
 
-        gx1, gy1 = top_left_cell
-        gx2, gy2 = bottom_right_cell
-        # 构建 (gx,gy) -> grid node id
-        grid_index = {}
-        for nid, node in graph.nodes.items():
-            if nid < 1000 and getattr(node, "gx", None) is not None and getattr(node, "gy", None) is not None:
-                grid_index[(node.gx, node.gy)] = nid
+    gx1, gy1 = top_left_cell
+    gx2, gy2 = bottom_right_cell
+    # 构建 (gx,gy) -> grid node id
+    grid_index = {}
+    for nid, node in graph.nodes.items():
+        if nid < 1000 and getattr(node, "gx", None) is not None and getattr(node, "gy", None) is not None:
+            grid_index[(node.gx, node.gy)] = nid
 
-        border_cells = []
-        for x in range(gx1, gx2 + 1):  # 顶边
-            border_cells.append((x, gy1))
-        for y in range(gy1 + 1, gy2 + 1):  # 右边
-            border_cells.append((gx2, y))
-        for x in range(gx2 - 1, gx1 - 1, -1):  # 底边
-            border_cells.append((x, gy2))
-        for y in range(gy2 - 1, gy1, -1):  # 左边
-            border_cells.append((gx1, y))
+    border_cells = []
+    # 顶边：在 continuous block 上方一行
+    for x in range(gx1, gx2 + 1):
+        border_cells.append((x, gy1 - 1))
 
-        continuous_ids = [nid for nid in graph.nodes if nid >= 1000]
-        for nid in continuous_ids:
-            if nid not in graph.edges:
-                graph.edges[nid] = {}
+    # 右边：在 continuous block 右侧一列
+    for y in range(gy1, gy2 + 1):
+        border_cells.append((gx2 + 1, y))
 
-        def euclidean(p, q):
-            dx, dy = p[0]-q[0], p[1]-q[1]
-            return (dx*dx + dy*dy) ** 0.5
+    # 底边：在 continuous block 下方一行
+    for x in range(gx2, gx1 - 1, -1):
+        border_cells.append((x, gy2 + 1))
 
-        for gx, gy in border_cells:
-            gid = grid_index.get((gx, gy))
-            if gid is None:
+    # 左边：在 continuous block 左侧一列
+    for y in range(gy2, gy1 - 1, -1):
+        border_cells.append((gx1 - 1, y))
+
+    continuous_ids = [nid for nid in graph.nodes if nid >= 1000]
+    for nid in continuous_ids:
+        if nid not in graph.edges:
+            graph.edges[nid] = {}
+
+    def euclidean(p, q):
+        dx, dy = p[0]-q[0], p[1]-q[1]
+        return (dx*dx + dy*dy) ** 0.5
+
+    for gx, gy in border_cells:
+        print(f"[DEBUG] checking grid node at ({gx}, {gy})")
+        gid = graph.find_node_id(gx, gy)
+        if gid is None:
+            continue
+        if gid not in graph.edges:
+            graph.edges[gid] = {}
+
+        gnode = graph.nodes[gid]
+        gp = (gnode.pixel_x, gnode.pixel_y)
+        print(f'gp:{gp}')
+
+        best_cid, best_d = None, float('inf')
+        for cid in continuous_ids:
+            if cid in graph.edges[gid]:
                 continue
-            if gid not in graph.edges:
-                graph.edges[gid] = {}
+            cnode = graph.nodes[cid]
+            cp = (cnode.pixel_x, cnode.pixel_y)
 
-            gnode = graph.nodes[gid]
-            gp = (gnode.pixel_x, gnode.pixel_y)
+            if is_line_clear_global(safe_mask_global, gp, cp):
+                d = euclidean(gp, cp)
+                if d < best_d:
+                    best_d, best_cid = d, cid
 
-            best_cid, best_d = None, float('inf')
-            for cid in continuous_ids:
-                if cid in graph.edges[gid]:
-                    continue
-                cnode = graph.nodes[cid]
-                cp = (cnode.pixel_x, cnode.pixel_y)
-
-                if is_line_clear_global(safe_mask_global, gp, cp):
-                    d = euclidean(gp, cp)
-                    if d < best_d:
-                        best_d, best_cid = d, cid
-
-            if best_cid is not None:
-                graph.add_edge(gid, best_cid, 10.0)
+        if best_cid is not None:
+            graph.add_edge(gid, best_cid, 10.0)
+            print(f'connnect {gid} and {best_cid}!')
 
     return {
         "cropped": out_crop_path,
