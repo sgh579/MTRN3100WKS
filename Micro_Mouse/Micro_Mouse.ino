@@ -268,7 +268,7 @@ void loop() {
     // Stop the robot
     while (cmd_sequence_completion_FLAG) {}
 
-    delay(5);
+    delay(10);
 }
 
 void lidarInitialize() {
@@ -493,19 +493,19 @@ void executeForwardMovement() {
     // lidar_correction = 0;
     // yaw_output = 0;
     
-    motor1_encoder_position_controller.setTarget(
-        (target_motion_rotation_radians * speed_factor)
-    );
-    motor2_encoder_position_controller.setTarget(
-        (-target_motion_rotation_radians * speed_factor)
-    );
-
     // motor1_encoder_position_controller.setTarget(
-    //     (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    //     (target_motion_rotation_radians * speed_factor)
     // );
     // motor2_encoder_position_controller.setTarget(
-    //     (-target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    //     (-target_motion_rotation_radians * speed_factor)
     // );
+
+    motor1_encoder_position_controller.setTarget(
+        (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    );
+    motor2_encoder_position_controller.setTarget(
+        (-target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
+    );
 }
 
 // Improved turn execution with wall awareness
