@@ -40,7 +40,7 @@ char *script = "o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 2000 
+#define CMD_COMPLETE_STABLE_CYCLES 100 
 #define POSITION_ERROR_THRESHOLD 5.0f
 #define ANGLE_ERROR_THRESHOLD 1.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
@@ -178,14 +178,15 @@ void loop() {
                 break;
                 case 'o':
                     target_distance = 0;
+                                    
+                    float turn_angle = value - fmod(current_angle, 360.0f);
+                    if (turn_angle > 180) turn_angle -= 360;
+                    if (turn_angle < -180) turn_angle += 360;
                     
-                    float turn_angle = value - current_angle;
-                    while (turn_angle < -200.0f) turn_angle += 360.0f;
-                    while (turn_angle > 200.0f) turn_angle -= 360.0f;
-                    target_angle = current_angle + turn_angle;
+                    target_angle = turn_angle;
 
                     // yaw_controller.reset();
-                    yaw_controller.zeroAndSetTarget(current_angle, target_angle); // TODO: ADJUST FOR NEGATIVES
+                    yaw_controller.zeroAndSetTarget(0, target_angle); 
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
 
@@ -294,6 +295,7 @@ bool is_this_cmd_completed() {
     } else if (prev_cmd == 'o') {
         // Turn completion logic remains the same
         float angle_error = target_angle - current_angle;
+        angle_error = angle_error>0? angle_error: -angle_error;
         
         if (angle_error <= ANGLE_ERROR_THRESHOLD ) {
             stable_counter++;
