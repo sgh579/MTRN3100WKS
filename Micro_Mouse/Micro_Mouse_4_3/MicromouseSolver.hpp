@@ -820,7 +820,7 @@ void setup()
     Serial.begin(9600);
 
     // Create solver instance (adjust maze size as needed for memory constraints)
-    solver = new MicromouseSolver(8, 8, Position(0, 0), Position(3, 3));
+    solver = new MicromouseSolver(Position(0, 0), Position(3, 3));
 
     // Initialize the solver
     solver->setup();
