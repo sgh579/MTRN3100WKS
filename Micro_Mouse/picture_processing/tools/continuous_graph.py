@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Tuple, Optional, Dict
 import cv2
 import numpy as np
+from collections import deque
 
 def bresenham_line(x0: int, y0: int, x1: int, y1: int):
     pts = []
@@ -38,7 +39,7 @@ def bresenham_line(x0: int, y0: int, x1: int, y1: int):
 def is_line_clear_global(safe_mask_global: np.ndarray, p0_abs, p1_abs) -> bool:
     """
     在整张图里判断两点连线是否完全经过“安全像素”（白色）。
-    p0_abs / p1_abs: (px, py) 绝对像素坐标
+    p0_abs / p1_abs: (pixel_x, pixel_y) 绝对像素坐标
     """
     H, W = safe_mask_global.shape[0:2]
     x0, y0 = int(round(p0_abs[0])), int(round(p0_abs[1]))
@@ -70,7 +71,7 @@ def draw_graph_on_image(
     font_scale: float = 0.5)->np.ndarray:
     """
     在 image_path 指定的图片上，把 graph 的节点/边画出来并保存到 out_path。
-    - graph.nodes: {node_id: Node(...)}，Node.pixel_x/py 为像素坐标（左上角原点）
+    - graph.nodes: {node_id: Node(...)}，Node.pixel_x/pixel_y 为像素坐标（左上角原点）
     - graph.edges: {u: {v: weight, ...}, ...}（无向图：两侧都存）
     """
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
@@ -213,9 +214,9 @@ def process_continuous_maze(
     for r in range(division):
         for c in range(division):
             nid = 1000 + r * division + c
-            px = int(round(x_min + (c + 0.5) * unit_w))  # 采单元中心点更均匀
-            py = int(round(y_min + (r + 0.5) * unit_h))
-            graph.add_node(nid, px, py, gx=None, gy=None)
+            pixel_x = int(round(x_min + (c + 0.5) * unit_w))  # 采单元中心点更均匀
+            pixel_y = int(round(y_min + (r + 0.5) * unit_h))
+            graph.add_node(nid, pixel_x, pixel_y, gx=None, gy=None)
 
     # 7) 连接边
     if fully_connect:
@@ -314,3 +315,105 @@ def process_continuous_maze(
         "unsafe": out_unsafe_path,
         "combined": out_combined_path,
     }
+
+def continuous_bfs(
+    graph,
+    unsafe_zone_img_path: np.ndarray,
+    start_pos: Tuple[int, int],
+    end_pos: Tuple[int, int],
+    path_color=(0, 255, 0),      # 绿色
+    path_thickness: int = 2,
+    show_nodes: bool = False,
+    node_radius: int = 4,
+    node_color=(0, 0, 255),      # 红色
+) -> np.ndarray:
+    """
+    在 graph 上以 BFS 搜索从起点到终点（均为 grid 坐标）的最短路径（最少跳数）。
+    - graph.nodes[nid] 需含属性: pixel_x, py（像素坐标），gx, gy（grid 坐标, 对于 grid nodes）
+    - graph.edges[u] 是 dict，key 为邻接点 id
+    - unsafe_zone: BGR 图片（不会被当作障碍判断，仅用于画路径）
+
+    返回：在 unsafe_zone 上绘制了路径的图像副本 (np.ndarray)
+    """
+    unsafe_zone = cv2.imread(unsafe_zone_img_path)
+    if unsafe_zone is None or unsafe_zone.ndim != 3:
+        raise ValueError("unsafe_zone 必须是 BGR 图像 (H,W,3)")
+
+    # ---------- 1) 建立 (gx,gy) -> grid_node_id 的索引 ----------
+    grid_index: Dict[Tuple[int, int], int] = {}
+    for nid, node in graph.nodes.items():
+        # 约定：grid nodes 的 id < 1000，且具有 gx,gy
+        if nid < 1000 and getattr(node, "gx", None) is not None and getattr(node, "gy", None) is not None:
+            grid_index[(int(node.gx), int(node.gy))] = nid
+
+    # 起终点的节点 id
+    start_id = graph.find_node_id(int(start_pos[0]), int(start_pos[1]))
+    end_id   = graph.find_node_id(int(end_pos[0]), int(end_pos[1]))
+    if start_id is None or end_id is None:
+        raise ValueError(f"无法根据 grid 坐标定位起点或终点：start={start_pos}, end={end_pos}")
+
+    if start_id == end_id:
+        # 直接在原图上画一个点并返回
+        vis = unsafe_zone.copy()
+        s = graph.nodes[start_id]
+        cv2.circle(vis, (int(s.pixel_x), int(s.pixel_y)), node_radius, node_color, -1, cv2.LINE_AA)
+        return vis
+
+    # ---------- 2) BFS（最少跳数） ----------
+    q = deque([start_id])
+    visited = {start_id}
+    parent: Dict[int, Optional[int]] = {start_id: None}
+
+    found = False
+    while q:
+        u = q.popleft()
+        if u == end_id:
+            found = True
+            break
+        for v in graph.edges.get(u, {}):
+            if v not in visited:
+                visited.add(v)
+                parent[v] = u
+                q.append(v)
+
+    # ---------- 3) 复原路径 ----------
+    vis = unsafe_zone.copy()
+    if not found:
+        # 没有路径：直接返回原图（可选：在起终点各画一个标记）
+        su = graph.nodes[start_id]; eu = graph.nodes[end_id]
+        cv2.circle(vis, (int(su.pixel_x), int(su.pixel_y)), node_radius, (0, 0, 255), -1, cv2.LINE_AA)
+        cv2.circle(vis, (int(eu.pixel_x), int(eu.pixel_y)), node_radius, (255, 0, 0), -1, cv2.LINE_AA)
+        return vis
+
+    path_ids: List[int] = []
+    cur = end_id
+    while cur is not None:
+        path_ids.append(cur)
+        cur = parent.get(cur)
+    path_ids.reverse()
+
+    # 将 id → (pixel_x,pixel_y)
+    pts = []
+    H, W = vis.shape[:2]
+    for nid in path_ids:
+        n = graph.nodes[nid]
+        if n is None or n.pixel_x is None or n.pixel_y is None:
+            continue
+        x, y = int(round(n.pixel_x)), int(round(n.pixel_y))
+        if 0 <= x < W and 0 <= y < H:
+            pts.append([x, y])
+
+    if len(pts) >= 2:
+        pts_np = np.array(pts, dtype=np.int32).reshape(-1, 1, 2)
+        cv2.polylines(vis, [pts_np], isClosed=False, color=path_color, thickness=path_thickness, lineType=cv2.LINE_AA)
+
+    if show_nodes:
+        for x, y in pts:
+            cv2.circle(vis, (x, y), node_radius, node_color, -1, cv2.LINE_AA)
+
+    # 可选：标记起终点颜色
+    s = graph.nodes[start_id]; e = graph.nodes[end_id]
+    cv2.circle(vis, (int(s.pixel_x), int(s.pixel_y)), node_radius+1, (0, 255, 255), -1, cv2.LINE_AA)  # 起点黄色
+    cv2.circle(vis, (int(e.pixel_x), int(e.pixel_y)), node_radius+1, (255, 0, 0),   -1, cv2.LINE_AA)  # 终点蓝色
+
+    return vis
