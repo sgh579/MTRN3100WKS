@@ -8,6 +8,8 @@ from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 from tools.User_Configuration import IMAGE_FOLER
+import random
+from tools.continuous_graph import draw_graph_on_image
 
 THRESHOLD_TUNER_ENABLE_FLAG = True
 
@@ -125,8 +127,8 @@ def main():
         raise IOError(f"无法读取图像: {image_path}")
 
     # 定义裁剪区域 (y1:y2, x1:x2)
-    x1, y1 = 468, 468
-    x2, y2 = 1638, 1638
+    x1, y1 = 480, 480
+    x2, y2 = 1680, 1680
 
     # 裁剪
     cropped = img[y1:y2, x1:x2]
@@ -156,5 +158,43 @@ def main():
     # cropped_unsafe = cv2.cvtColor(cropped_unsafe, cv2.COLOR_BGR2RGB)
     cv2.imwrite(os.path.join(images_folder, "7_cropped_unsafe.png"), cropped_unsafe)
 
+    # combine
+    img[y1:y2, x1:x2] = cropped_unsafe
+    cv2.imwrite(os.path.join(images_folder, "8_combined_continuous_maze.png"), img)
+
+    # now create nodes inside the continuous maze
+    x_min, y_min = 500, 500
+    x_maxm, y_maxm = 1600, 1600
+    # nodes in continuous maze get index from 1000
+    division = 20
+    for row in range(division):
+        for column in range(division):
+            unit_width = (x_maxm - x_min)/division
+            nid = 1000 + row*division + column
+            px = round(x_min + column*unit_width)
+            py = round(y_min + row*unit_width)
+
+            cg.add_node(nid, px, py, gx=None, gy=None)
+            # maybe not use this way to generate nodes
+    # 相互连接所有continuous nodes，以用BFS求得最小跳
+    for node in cg.nodes:
+        this_node_id = cg.nodes[node].get_ID() 
+        # 排除standard中的node
+        if this_node_id < 1000:
+            continue
+        for target_node in cg.nodes:
+            target_node_id = cg.nodes[target_node].get_ID() 
+            if target_node_id == this_node_id:
+                continue
+            if target_node_id < 1000:
+                continue
+            if target_node_id in cg.edges[this_node_id]:
+                continue
+            cg.add_edge(this_node_id, target_node_id, 10)
+        
+    draw_graph_on_image(cg, os.path.join(images_folder, '2_projected.png'), os.path.join(images_folder, '9_mixed_graph_on_img.png'))
+
+
 if __name__ == '__main__':
     main()
+

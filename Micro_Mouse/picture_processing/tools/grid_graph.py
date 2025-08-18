@@ -494,11 +494,14 @@ class Graph:
     def __init__(self):
         self.nodes = {}
         self.edges = {}
+        self.nodes_cnt = 0
+        self.edges_cnt = 0
 
     def add_node(self, node_id, px, py, gx, gy):
         if node_id not in self.nodes:
             self.nodes[node_id] = Node(node_id, px, py, gx, gy)
             self.edges[node_id] = {}
+            self.nodes_cnt += 1
         else:
             print(f"Node {node_id} already exists in the graph.")
 
@@ -506,6 +509,7 @@ class Graph:
         if node_id1 in self.nodes and node_id2 in self.nodes:
             self.edges[node_id1][node_id2] = weight
             self.edges[node_id2][node_id1] = weight
+            self.edges_cnt += 1
         else:
             print(f"One or both nodes {node_id1} and {node_id2} do not exist in the graph.")
 
@@ -513,6 +517,7 @@ class Graph:
         if node_id1 in self.edges and node_id2 in self.edges[node_id1]:
             del self.edges[node_id1][node_id2]
             del self.edges[node_id2][node_id1]
+            self.edges_cnt -= 1
         else:
             print(f"Edge between {node_id1} and {node_id2} does not exist.")
     
@@ -531,12 +536,14 @@ class Graph:
         if node_id not in self.nodes:
             print(f"Node {node_id} does not exist in the graph.")
             return False
-
+        self.nodes_cnt -= 1
+        
         # 删除与该节点相连的所有边（邻居里的回边也要删）
         neighbors = list(self.edges.get(node_id, {}).keys())
         for nb in neighbors:
             if nb in self.edges and node_id in self.edges[nb]:
                 del self.edges[nb][node_id]
+                self.edges_cnt -= 1
         # 删掉该节点自己的邻接表
         if node_id in self.edges:
             del self.edges[node_id]
