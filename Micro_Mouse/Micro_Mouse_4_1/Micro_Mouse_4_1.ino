@@ -13,8 +13,8 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
-// char *script = "o90|o180|o270|o0";
+// char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
+char *script = "o90|o180|o270|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -392,8 +392,13 @@ void MovementControl() {
         // Compute and apply motor outputs
         // motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
         // motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
-        motor1_encoder_position_controller_output = -20 * (target_angle - current_angle);
-        motor2_encoder_position_controller_output = -20 * (target_angle - current_angle);
+
+        float turn_angle = target_angle - current_angle; 
+        while (turn_angle > 180.0f) turn_angle -= 360.0f; 
+        while (turn_angle < -180.0f) turn_angle += 360.0f; 
+
+        motor1_encoder_position_controller_output = -20 * turn_angle;
+        motor2_encoder_position_controller_output = -20 * turn_angle;
     }
     
     
