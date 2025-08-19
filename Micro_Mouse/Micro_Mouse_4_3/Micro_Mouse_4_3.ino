@@ -172,7 +172,11 @@ void loop()
     if (maze_solver->getState() == MOVING_TO_TARGET)
     {
         // display map
-        // get map
+        char map[10][17];
+        maze_solver->getDisplayMaze(map);
+
+        monitor_buffer = method1_simple_concat(map);
+
         show_one_line_monitor(monitor_buffer);
 
         // get number
