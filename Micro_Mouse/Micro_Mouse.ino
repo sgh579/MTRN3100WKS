@@ -13,7 +13,8 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f180|o180|f180|o0";
+char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
+// char *script = "o90|o180|o270|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -40,18 +41,22 @@ char *script = "f180|o180|f180|o0";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 50 
+#define CMD_COMPLETE_STABLE_CYCLES 20
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD 25
-#define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
+#define ANGLE_THRESHOLD 2.0f
+#define BIGGEST_WALL_DISTANCE_THRESHOLD 80.0f 
+#define SMALLEST_WALL_DISTANCE_THRESHOLD 15
 #define DESIRED_WALL_DISTANCE 50.0f
-#define DELAY_BETWEEN_CMD_VALUE 25
+#define DELAY_BETWEEN_CMD_VALUE 10
+#define KP_LIDAR 0.1
+#define KI_LIDAR 0.01
 
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0); 
-mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
+mtrn3100::PIDController motor2_encoder_position_controller(100, 0.1, 0);
+mtrn3100::PIDController yaw_controller(2, 0.5, 0.1);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -129,6 +134,7 @@ void setup() {
     // setup zero reference for the pid controllers
     motor1_encoder_position_controller.zeroAndSetTarget(encoder.getLeftRotation(), 0); 
     motor2_encoder_position_controller.zeroAndSetTarget(encoder.getRightRotation(), -0); // reverse it for vehicle's motion
+    yaw_controller.zeroAndSetTarget(0,0);
 
     // lidar setup
     Serial.println(F("Initializing lidar sensors..."));
@@ -172,12 +178,14 @@ void loop() {
                     target_angle = current_angle;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.zeroAndSetTarget(0,target_angle);
                 break;
                 case 'o':
                     target_distance = 0;
                     target_angle = value;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.zeroAndSetTarget(0,target_angle);
 
                     sprintf(monitor_buffer, "t_a: %d, curr: %d", (int) target_angle, (int) current_angle);
                     show_one_line_monitor(monitor_buffer);              
@@ -271,7 +279,8 @@ bool is_this_cmd_completed() {
         if (position_error <= POSITION_ERROR_THRESHOLD) {
             stable_counter++;
         } else {
-            stable_counter = 0;
+            // stable_counter = 0;
+            // stable_counter -= 1;
         }
         
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
@@ -282,10 +291,11 @@ bool is_this_cmd_completed() {
         }
         
     } else if (prev_cmd == 'o') {
-        if (motor1_encoder_position_controller_output <= ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD ) {
+        if (abs(target_angle-current_angle) <= ANGLE_THRESHOLD ) {
             stable_counter++;
         } else {
-            stable_counter = 0;
+            // stable_counter = 0;
+            // stable_counter -= 1;
         }
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
     }
@@ -314,26 +324,34 @@ void show_one_line_monitor(const char* str) {
 
 // Enhanced LIDAR reading with filtering and error handling
 void updateLidarReadings() {
-    // Read raw values with timeout handling
-    int raw_left = sensor1.readRangeSingleMillimeters();
-    int raw_front = sensor2.readRangeSingleMillimeters();
-    int raw_right = sensor3.readRangeSingleMillimeters();
-    
-    // delete a lidar "filter"
-    lidar_left = (int) raw_left;
-    lidar_front = (int) raw_front;
-    lidar_right = (int) raw_right;
+    lidar_left = sensor1.readRangeSingleMillimeters();
+    lidar_front = sensor2.readRangeSingleMillimeters();
+    lidar_right = sensor3.readRangeSingleMillimeters();
 }
 
 // Improved wall-following control with PD controller
 float calculateWallFollowingCorrection() {
-    if (prev_cmd != 'f') return 0.0f;  // Only apply during forward motion
-    
     float correction = 0.0f;
-    float wall_error = 0.0f;
+    bool wall_detect_flag = false;
+    if (prev_cmd != 'f') return 0.0f;  // Only apply during forward motion
+
+    float theta_rad = (target_angle - current_angle) * PI / 180.0 ;
+
+    if ((lidar_left < BIGGEST_WALL_DISTANCE_THRESHOLD) && (lidar_left > SMALLEST_WALL_DISTANCE_THRESHOLD)){
+        correction += DESIRED_WALL_DISTANCE - (lidar_left * cos(theta_rad));
+        wall_detect_flag = true;
+    } 
+
+    if ((lidar_right < BIGGEST_WALL_DISTANCE_THRESHOLD) && (lidar_right > SMALLEST_WALL_DISTANCE_THRESHOLD)){
+        correction -= DESIRED_WALL_DISTANCE - (lidar_right * cos(theta_rad));
+        wall_detect_flag = true;
+    } 
+
+    if (!wall_detect_flag){
+        correction = 0;
+    }
     
-    // to compute lidar_offset
-    return 0;
+    return correction * KP_LIDAR;
 }
 
 // Enhanced forward movement with dynamic speed control
@@ -347,20 +365,18 @@ void forward_Update_Target() {
     float speed_factor = 1.0f;
 
     motor1_encoder_position_controller.setTarget(
-        (target_motion_rotation_radians * speed_factor)  + lidar_correction
+        (target_motion_rotation_radians * speed_factor)
     );
     motor2_encoder_position_controller.setTarget(
-        (-target_motion_rotation_radians * speed_factor) + lidar_correction
+        (-target_motion_rotation_radians * speed_factor)
     );
 }
 
 
-void turn_Update_Target() {
-    float ratio_by_experiment = 0.046924;
-    float yaw_output = target_angle * ratio_by_experiment;
-    motor1_encoder_position_controller.setTarget(yaw_output);
-    motor2_encoder_position_controller.setTarget(yaw_output);
-}
+// void turn_Update_Target() {
+//     // float ratio_by_experiment = 0.046924;
+//     yaw_controller.setTarget(target_angle);
+// }
 
 // Replace your main loop's movement control section with this:
 void MovementControl() {
@@ -368,13 +384,19 @@ void MovementControl() {
     // Execute movement based on current command
     if (prev_cmd == 'f') {
         forward_Update_Target();
+        // Compute and apply motor outputs
+        motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation())-yaw_controller.compute(current_angle);
+        motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation())-yaw_controller.compute(current_angle);
     } else if (prev_cmd == 'o') {
-        turn_Update_Target();
+        // turn_Update_Target();
+        // Compute and apply motor outputs
+        // motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
+        // motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
+        motor1_encoder_position_controller_output = -20 * (target_angle - current_angle);
+        motor2_encoder_position_controller_output = -20 * (target_angle - current_angle);
     }
     
-    // Compute and apply motor outputs
-    motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-    motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+    
 
     if (delay_between_cmd > 0){
         delay_between_cmd --;

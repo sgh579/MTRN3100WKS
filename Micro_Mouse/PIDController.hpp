@@ -47,6 +47,8 @@ public:
     void zeroAndSetTarget(float zero, float target) {
         zero_ref = zero;
         setpoint = target;
+        integral = 0;
+        prev_error = 0;
     }
 
     void setTarget(float target)
@@ -72,6 +74,7 @@ public:
         prev_error = 0;
         setpoint = 0;
         zero_ref = 0;
+        integral = 0;
     }
 
 
