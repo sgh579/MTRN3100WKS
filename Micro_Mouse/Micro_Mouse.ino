@@ -41,13 +41,13 @@ char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 100
+#define CMD_COMPLETE_STABLE_CYCLES 20
 #define POSITION_ERROR_THRESHOLD 5.0f
 #define ANGLE_THRESHOLD 2.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 80.0f 
 #define SMALLEST_WALL_DISTANCE_THRESHOLD 15
 #define DESIRED_WALL_DISTANCE 50.0f
-#define DELAY_BETWEEN_CMD_VALUE 25
+#define DELAY_BETWEEN_CMD_VALUE 10
 #define KP_LIDAR 0.1
 #define KI_LIDAR 0.01
 
@@ -56,7 +56,7 @@ mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0); 
 mtrn3100::PIDController motor2_encoder_position_controller(100, 0.1, 0);
-mtrn3100::PIDController yaw_controller(3, 0.5, 0);
+mtrn3100::PIDController yaw_controller(2, 0.5, 0.1);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -390,8 +390,10 @@ void MovementControl() {
     } else if (prev_cmd == 'o') {
         // turn_Update_Target();
         // Compute and apply motor outputs
-        motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
-        motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
+        // motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
+        // motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
+        motor1_encoder_position_controller_output = -20 * (target_angle - current_angle);
+        motor2_encoder_position_controller_output = -20 * (target_angle - current_angle);
     }
     
     
