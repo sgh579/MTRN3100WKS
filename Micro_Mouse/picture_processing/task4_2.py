@@ -7,7 +7,7 @@ from collections import deque
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
-from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG
+from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG, start_pos, end_pos, THRESHOLD_SELECTED_MANUALLY
 import random
 from tools.continuous_graph import draw_graph_on_image, process_continuous_maze, continuous_bfs
 
@@ -95,7 +95,7 @@ def main():
         threshold_selected_manually = T_final
         print(f'selected threshold: {threshold_selected_manually}')
     else:        
-        threshold_selected_manually = 125
+        threshold_selected_manually = THRESHOLD_SELECTED_MANUALLY
         print(f'using default threshold: {threshold_selected_manually}')
 
     # ============================
@@ -143,7 +143,7 @@ def main():
         top_left_cell=continuous_maze_top_left_cell,
         bottom_right_cell=continuous_maze_bottom_right_cell,
         cell_px=240,
-        unsafe_kernel_size=50, # TODO get this into a configure key
+        unsafe_kernel_size=40,
         unsafe_iterations=3,
         node_margin_px=50,
         division=20,
@@ -154,13 +154,12 @@ def main():
     output_img = draw_graph_on_image(cg, out_path_8)
     cv2.imwrite(out_path_9, output_img)
 
-    start_pos = (2, 7)  # Grid position (x=1, y=7)
-    end_pos = (1, 1)    # Grid position (x=7, y=1)  
+    
     out_path_10 = os.path.join(images_folder, '10_continuous_bfs_path.png')
     output_img = continuous_bfs(cg, out_path_8, start_pos, end_pos)
     cv2.imwrite(out_path_10, output_img)
     
-
+    print('########### task 4.2 completed ##########')
 
 if __name__ == '__main__':
     main()

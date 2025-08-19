@@ -283,7 +283,6 @@ def process_continuous_maze(
         return (dx*dx + dy*dy) ** 0.5
 
     for gx, gy in border_cells:
-        print(f"[DEBUG] checking grid node at ({gx}, {gy})")
         gid = graph.find_node_id(gx, gy)
         if gid is None:
             continue
@@ -292,7 +291,6 @@ def process_continuous_maze(
 
         gnode = graph.nodes[gid]
         gp = (gnode.pixel_x, gnode.pixel_y)
-        print(f'gp:{gp}')
 
         best_cid, best_d = None, float('inf')
         for cid in continuous_ids:
@@ -308,7 +306,6 @@ def process_continuous_maze(
 
         if best_cid is not None:
             graph.add_edge(gid, best_cid, 10.0)
-            print(f'connnect {gid} and {best_cid}!')
 
     return {
         "cropped": out_crop_path,

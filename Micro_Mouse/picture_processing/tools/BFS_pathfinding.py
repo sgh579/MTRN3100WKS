@@ -242,7 +242,7 @@ def run_pathfinding_example(bfs_graph, image_path: str, start, end):
     print(f"Path found with {len(path)} nodes:")
     for i, node_id in enumerate(path):
         node = bfs_graph.nodes[node_id]
-        print(f"  {i+1}: Node {node_id} at grid ({node.grid_x}, {node.grid_y})")
+        # print(f"  {i+1}: Node {node_id} at grid ({node.grid_x}, {node.grid_y})")
     
     # Convert path to commands
     commands = pathfinder.path_to_commands(path)

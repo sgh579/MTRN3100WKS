@@ -7,7 +7,7 @@ from collections import deque
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
-from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG
+from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG, start_pos, end_pos, THRESHOLD_SELECTED_MANUALLY
 
 out_path_1 = os.path.join(IMAGE_FOLER, '1_corner.png')
 out_path_2 = os.path.join(IMAGE_FOLER, '2_projected.png')
@@ -91,7 +91,7 @@ def main():
         threshold_selected_manually = T_final
         print(f'selected threshold: {threshold_selected_manually}')
     else:        
-        threshold_selected_manually = 125
+        threshold_selected_manually = THRESHOLD_SELECTED_MANUALLY
         print(f'using default threshold: {threshold_selected_manually}')
 
     # ============================
@@ -134,12 +134,11 @@ def main():
     # command list example: f18|o90|f18|f18|o0|
         #[x, y]
 
-    start_pos = (1, 6)  # Grid position (x=1, y=7)
-    end_pos = (5, 1)    # Grid position (x=7, y=1)  
     commands, viz_path = run_pathfinding_example(bfs_graph, out_path_4, start_pos, end_pos)
     
     print(f"\nFinal Arduino commands to copy: {commands}")
-    print(f"Path visualization: {viz_path}")
+
+    print('########### task 4.1 completed ##########')
 
 if __name__ == '__main__':
     main()

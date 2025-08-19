@@ -164,7 +164,6 @@ class Projection:
         tr = (self.out_w - self.margin, self.margin)
         bl = (self.margin, self.out_h - self.margin)
         br = (self.out_w - self.margin, self.out_h - self.margin)
-        print(f'in target image: \n tl: {tl} \n tr: {tr} \n bl: {bl} \n br: {br} \n')
         return np.array([tl, tr, bl, br], dtype=np.float32)
 
     def warp_from_image(self,

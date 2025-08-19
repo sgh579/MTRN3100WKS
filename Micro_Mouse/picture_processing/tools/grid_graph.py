@@ -69,7 +69,7 @@ class ThresholdTuner:
         cv2.createTrackbar("Invert(0/1)", self.win, self.current_invert, 1, self._update)
         self._update()
 
-        print("操作：拖动滑块调阈值；按 S 保存，Q/ESC 退出。")
+        print("Operation: Drag the slider to adjust the threshold; press S to save, Q/ESC to exit.")
         while True:
             k = cv2.waitKey(20) & 0xFF
             if k in (ord('q'), 27):
