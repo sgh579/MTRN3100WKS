@@ -62,7 +62,9 @@ MPU6050 mpu(Wire);
 VL6180X sensor1; // left
 VL6180X sensor2; // front
 VL6180X sensor3; // right
-IntegratedMicromouseSolver *maze_solver = nullptr;
+// IntegratedMicromouseSolver *maze_solver = nullptr;
+IntegratedMicromouseSolver maze_solver(Position(0, 0), Position(3, 3));
+
 
 int sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
 int sensor2_pin = A1; // ENABLE PIN FOR SENSOR 2 41
@@ -130,16 +132,8 @@ void setup()
 }
 
 
-bool yes = true; 
 void loop()
 {
-    if (yes) {
-        oled.println("yes");
-        yes = false;
-    }
-    return;
-    // delay(5);
-    // return;
     // Read sensors
     encoder_odometry.update(encoder.getLeftRotation(), encoder.getRightRotation());
     mpu.update();
@@ -161,25 +155,25 @@ void loop()
     char next_command = '\0';
     float next_value = 0;
 
-    bool continue_solving = maze_solver->processMazeStep(
+    bool continue_solving = maze_solver.processMazeStep(
         curr_X, curr_Y, current_angle,
         lidar_left, lidar_front, lidar_right,
         motor1_output, motor2_output,
         next_command, next_value);
 
     // Execute new command if one was generated
-    if (next_command != '\0' && !maze_solver->isMovementInProgress())
+    if (next_command != '\0' && !maze_solver.isMovementInProgress())
     {
         executeCommand(next_command, next_value, curr_X, curr_Y, current_angle);
     }
 
     // Display map and completion
-    if (maze_solver->getState() == MOVING_TO_TARGET)
+    if (maze_solver.getState() == MOVING_TO_TARGET)
     {
         char map[10][17];
-        maze_solver->getDisplayMaze(map);
+        maze_solver.getDisplayMaze(map);
 
-        int percentage = maze_solver->getPercentage();
+        int percentage = maze_solver.getPercentage();
 
         formatDisplayMap(map, percentage);
 
@@ -187,7 +181,7 @@ void loop()
     }
 
     // Handle completion
-    if (!continue_solving && maze_solver->getState() == COMPLETED)
+    if (!continue_solving && maze_solver.getState() == COMPLETED)
     {
         show_one_line_monitor("MAZE SOLVED!");
         motor1.setPWM(0);
@@ -277,7 +271,7 @@ void executeCommand(char command, float value, float curr_x, float curr_y, float
     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
 
-    maze_solver->startMovement(command, value, curr_x, curr_y);
+    maze_solver.startMovement(command, value, curr_x, curr_y);
     curr_cmd = command;
 }
 
