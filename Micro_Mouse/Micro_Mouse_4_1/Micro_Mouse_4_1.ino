@@ -14,11 +14,13 @@
 #include <VL6180X.h>
 
 // char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
-char *script = "o90|o180|o270|o0";
+// char *script = "o90|o180|o270|o0";
+// char *script = "o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0";
+char *script = "f300";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
-#define LENGTH_TO_ROTATION_SCALE 0.83 // to be adjusted based on test
+#define LENGTH_TO_ROTATION_SCALE 0.95 // to be adjusted based on test
 #define LENGTH_OF_AXLE 82 // length of the axle in mm, used for distance calculations
 
 //These are the pins set up
@@ -102,8 +104,6 @@ char monitor_buffer[64];
 // Outputs for the PID controllers
 int motor1_encoder_position_controller_output = 0;
 int motor2_encoder_position_controller_output = 0;
-
-bool finished = false;
 
 void setup() {
     Serial.begin(115200);
@@ -291,7 +291,11 @@ bool is_this_cmd_completed() {
         }
         
     } else if (prev_cmd == 'o') {
-        if (abs(target_angle-current_angle) <= ANGLE_THRESHOLD ) {
+        float delta_angle = target_angle - current_angle; 
+        while (delta_angle > 180.0f) delta_angle -= 360.0f; 
+        while (delta_angle < -180.0f) delta_angle += 360.0f; 
+
+        if (abs(delta_angle) <= ANGLE_THRESHOLD ) {
             stable_counter++;
         } else {
             // stable_counter = 0;
@@ -388,11 +392,6 @@ void MovementControl() {
         motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation())-yaw_controller.compute(current_angle);
         motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation())-yaw_controller.compute(current_angle);
     } else if (prev_cmd == 'o') {
-        // turn_Update_Target();
-        // Compute and apply motor outputs
-        // motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
-        // motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
-
         float turn_angle = target_angle - current_angle; 
         while (turn_angle > 180.0f) turn_angle -= 360.0f; 
         while (turn_angle < -180.0f) turn_angle += 360.0f; 
@@ -401,8 +400,6 @@ void MovementControl() {
         motor2_encoder_position_controller_output = -20 * turn_angle;
     }
     
-    
-
     if (delay_between_cmd > 0){
         delay_between_cmd --;
         motor1_encoder_position_controller_output = 0;
@@ -411,38 +408,4 @@ void MovementControl() {
     
     motor1.setPWM(motor1_encoder_position_controller_output);
     motor2.setPWM(motor2_encoder_position_controller_output);
-    Serial.print("motor1_encoder_position_controller_output: ");
-    Serial.println(motor1_encoder_position_controller_output);
-    Serial.print("motor2_encoder_position_controller_output: ");
-    Serial.println(motor2_encoder_position_controller_output);
-}
-
-// a data structure of grid and localization
-class my_map {
-    public:
-        my_map();
-        get_x_on_grid_map();
-        get_y_on_grid_map();
-        get_x_on_ground();
-        get_y_on_ground();
-    private:
-        int x_on_grid_map;
-        int y_on_grid_map;
-        float x_on_ground;
-        float y_on_ground;
-
-};
-
-/**************************************/
-// task 4.3
-/**************************************/
-
-// use BFS to find the shorted path from start to goal
-void explore(){
-    return;
-}
-
-// the last part of task 4.3
-void execute_shortest_path(){
-    return;
 }
