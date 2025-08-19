@@ -171,15 +171,14 @@ void loop()
     // TODO: display map and completion
     if (maze_solver->getState() == MOVING_TO_TARGET)
     {
-        // display map
         char map[10][17];
         maze_solver->getDisplayMaze(map);
 
-        monitor_buffer = method1_simple_concat(map);
+        int percentage = 0;
+
+        monitor_buffer = formatDisplayMap(map, percentage);
 
         show_one_line_monitor(monitor_buffer);
-
-        // get number
     }
 
     // Handle completion
@@ -348,7 +347,7 @@ void show_one_line_monitor(const char *str)
     display.display();
 }
 
-char *method1_simple_concat(char maze[10][17])
+char *formatDisplayMap(char maze[10][17], int percentage)
 {
     int rows = 10;
     int cols = 17;
@@ -369,7 +368,23 @@ char *method1_simple_concat(char maze[10][17])
         }
         result[index++] = '\n';
     }
-    result[index] = '\0'; // Null terminate
+    result[index] = '\0';
+
+    char percentageStr[4];
+    itoa(percentage, percentageStr, 10);
+
+    percentageLen = 0;
+    for (int i = 0; i < 4 && percentageStr[i] != '\0'; i++)
+    {
+        percentageLen = i;
+    }
+
+    for (int i = percentageLen - 1; i >= 0; i--)
+    {
+        result[total_length - 3 - i] = percentageStr[i];
+    }
+
+    result[total_length - 2] = '%';
 
     return result;
 }
