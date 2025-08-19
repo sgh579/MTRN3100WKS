@@ -16,7 +16,7 @@
 // char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
 // char *script = "o90|o180|o270|o0";
 // char *script = "o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0";
-char *script = "f300";
+char *script = "o36.9|f100|o216.9|f100";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
