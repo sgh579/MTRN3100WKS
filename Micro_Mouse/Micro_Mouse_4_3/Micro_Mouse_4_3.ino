@@ -94,7 +94,7 @@ int lidar_front = 0;
 int lidar_right = 0;
 
 // buffer
-char monitor_buffer[64];
+char monitor_buffer[256];
 
 void setup()
 {
@@ -171,11 +171,14 @@ void loop()
     // TODO: display map and completion
     if (maze_solver->getState() == MOVING_TO_TARGET)
     {
-        // display map
-        // get map
-        show_one_line_monitor(monitor_buffer);
+        char map[10][17];
+        maze_solver->getDisplayMaze(map);
 
-        // get number
+        int percentage = maze_solver->getPercentage();
+
+        formatDisplayMap(map, percentage);
+
+        show_one_line_monitor(monitor_buffer);
     }
 
     // Handle completion
@@ -342,4 +345,27 @@ void show_one_line_monitor(const char *str)
         i++;
     }
     display.display();
+}
+
+void formatDisplayMap(char maze[10][17], int percentage)
+{
+    int rows = 10;
+    int cols = 17;
+
+    int index = 0;
+
+    // Copy characters row by row into the static buffer
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            monitor_buffer[index++] = maze[i][j];
+        }
+        monitor_buffer[index++] = '\n';
+    }
+
+    // Add percentage text at the end
+    index += sprintf(&monitor_buffer[index], "Progress: %d%%", percentage);
+
+    monitor_buffer[index] = '\0'; // Null terminate
 }

@@ -410,39 +410,39 @@ public:
 
     MazeState getState() const { return state; }
     bool isMovementInProgress() const { return movement_in_progress; }
-    float getPercentage() const { return 100.0f * num_visited / TOTAL_CELLS; }
+    int getPercentage() const { return static_cast<int>(100.0f * num_visited / TOTAL_CELLS); }
 
-    char getDisplayMaze[10][17]
+    void getDisplayMaze(char ret[10][17])
     {
-        for (int x = 0; x <= size; x++)
+        for (int x = 0; x <= MAX_MAZE_WIDTH; x++)
         {
-            for (int y = 0; y <= size; y++)
+            for (int y = 0; y <= MAX_MAZE_HEIGHT; y++)
             {
                 int row, col;
                 Cell curr = maze[x][y];
                 if (!curr.hasWall(NORTH))
                 {
                     row = x;
-                    col = 1 + 2y;
-                    displayMaze[row][col] = ' '
+                    col = 1 + 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
                 if (!curr.hasWall(SOUTH))
                 {
                     row = x + 1;
-                    col = 1 + 2y;
-                    displayMaze[row][col] = ' '
+                    col = 1 + 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
                 if (!curr.hasWall(EAST))
                 {
                     row = x + 1;
-                    col = 2y;
-                    displayMaze[row][col] = ' '
+                    col = 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
                 if (!curr.hasWall(WEST))
                 {
                     row = x + 1;
-                    col = 2y;
-                    displayMaze[row][col] = ' '
+                    col = 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
             }
         }
