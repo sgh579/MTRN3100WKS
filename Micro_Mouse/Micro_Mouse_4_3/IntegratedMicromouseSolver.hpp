@@ -159,6 +159,21 @@ private:
     Direction current_direction = NORTH;
     int num_visited = 0;
 
+    // Maze array
+    char displayMaze [10][17] = {
+        {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '},   // row 0
+        {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '},   // row 1
+        {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '},   // row 2
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 3
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 4
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 5
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 6
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 7
+        {' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' '},   // row 8
+        {' ', ' ', ' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' ', ' ', ' '}    // row 9
+    };
+
+
     MazeState state = EXPLORING;
     SimpleStack backtrack_stack;
     SimpleQueue bfs_queue;
@@ -377,6 +392,38 @@ public:
     MazeState getState() const { return state; }
     bool isMovementInProgress() const { return movement_in_progress; }
     float getPercentage() const { return 100.0f * num_visited / TOTAL_CELLS; }
+
+    char getDisplayMaze[10][17] {
+        for (int x=0;x<=size;x++) {
+            for (int y=0;y<=size;y++) {
+                int row, col;
+                Cell curr = maze[x][y];
+                if (!curr.hasWall(NORTH)) {
+                    row = x;
+                    col = 1+2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(SOUTH))  {
+                    row = x + 1;
+                    col = 1+2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(EAST))  {
+                    row = x + 1;
+                    col = 2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(WEST))  {
+                    row = x + 1;
+                    col = 2y;
+                    displayMaze[row][col]=' '
+                }
+
+            }
+        }
+
+        return displayMaze;
+    }
 
 private:
     float movement_start_x, movement_start_y;
