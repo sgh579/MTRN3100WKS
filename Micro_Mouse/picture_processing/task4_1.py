@@ -7,9 +7,7 @@ from collections import deque
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
-from tools.User_Configuration import IMAGE_FOLER
-
-THRESHOLD_TUNER_ENABLE_FLAG = True
+from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG
 
 def main():
     print(' ############# 4.1 starts #############')
