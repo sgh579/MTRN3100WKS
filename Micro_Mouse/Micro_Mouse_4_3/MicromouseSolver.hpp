@@ -173,6 +173,20 @@ private:
     Position target_pos;
     Direction current_direction = NORTH;
 
+    // Maze array
+    char displayMaze [10][17] = {
+        {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '},   // row 0
+        {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '},   // row 1
+        {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '},   // row 2
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 3
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 4
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 5
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 6
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 7
+        {' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' '},   // row 8
+        {' ', ' ', ' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' ', ' ', ' '}    // row 9
+    };
+
     // LIDAR sensor readings (in cm or your preferred unit)
     double left_sensor;
     double right_sensor;
@@ -803,66 +817,35 @@ public:
         return exploration_complete;
     }
 
-    // Arduino-friendly setup function
-    void setup()
-    {
-        Serial.begin(9600);
-        Serial.println("Micromouse solver initialized");
-    }
-};
+    char getDisplayMaze[10][17] {
+        for (int x=0;x<=size;x++) {
+            for (int y=0;y<=size;y++) {
+                int row, col;
+                Cell curr = maze[x][y];
+                if (!curr.hasWall(NORTH)) {
+                    row = x;
+                    col = 1+2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(SOUTH))  {
+                    row = x + 1;
+                    col = 1+2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(EAST))  {
+                    row = x + 1;
+                    col = 2y;
+                    displayMaze[row][col]=' '
+                }
+                if (!curr.hasWall(WEST))  {
+                    row = x + 1;
+                    col = 2y;
+                    displayMaze[row][col]=' '
+                }
 
-// Global solver instance
-MicromouseSolver *solver = nullptr;
-
-void setup()
-{
-    // Initialize Serial communication
-    Serial.begin(9600);
-
-    // Create solver instance (adjust maze size as needed for memory constraints)
-    solver = new MicromouseSolver(Position(0, 0), Position(3, 3));
-
-    // Initialize the solver
-    solver->setup();
-
-    Serial.println("Arduino Micromouse Ready!");
-}
-
-void loop()
-{
-    if (solver != nullptr)
-    {
-        // Read sensor values (replace with actual sensor reading code)
-        double left_reading = 20.0; // Example readings
-        double right_reading = 20.0;
-        double front_reading = 20.0;
-
-        // TODO: Replace with actual sensor reading code:
-        // left_reading = analogRead(LEFT_SENSOR_PIN) * conversion_factor;
-        // right_reading = analogRead(RIGHT_SENSOR_PIN) * conversion_factor;
-        // front_reading = analogRead(FRONT_SENSOR_PIN) * conversion_factor;
-
-        solver->updateSensorReadings(left_reading, right_reading, front_reading);
-
-        // Run one exploration step
-        if (!solver->isExplorationCompleted())
-        {
-            bool continue_exploring = solver->exploreStep();
-            if (!continue_exploring)
-            {
-                Serial.println("Exploration phase completed!");
-                solver->printMazeSimple();
             }
         }
-        else
-        {
-            // Exploration complete, you can now run optimal pathfinding
-            // solver->executeShortestPath(); // Uncomment to auto-execute
-
-            // For now, just wait
-            delay(1000);
-        }
-
-        delay(100); // Main loop delay
     }
-}
+
+    return displayMaze;
+};

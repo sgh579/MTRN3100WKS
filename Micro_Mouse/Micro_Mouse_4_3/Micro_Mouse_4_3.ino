@@ -170,6 +170,11 @@ void loop()
 
     // TODO: display map and completion
     if (maze_solver->getState() == MOVING_TO_TARGET) {
+        // display map
+        // get map
+        show_one_line_monitor(monitor_buffer);
+
+        // get number  
 
     }
 
