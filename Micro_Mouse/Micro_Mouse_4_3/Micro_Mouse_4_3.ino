@@ -63,9 +63,9 @@ mtrn3100::Motor motor1(MOT1PWM, MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM, MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 MPU6050 mpu(Wire);
-VL6180X sensor1;                          // left
-VL6180X sensor2;                          // front
-VL6180X sensor3;                          // right
+VL6180X sensor1; // left
+VL6180X sensor2; // front
+VL6180X sensor3; // right
 IntegratedMicromouseSolver *maze_solver = nullptr;
 
 int sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
@@ -169,28 +169,32 @@ void loop()
     }
 
     // TODO: display map and completion
-    if (maze_solver->getState() == MOVING_TO_TARGET) {
+    if (maze_solver->getState() == MOVING_TO_TARGET)
+    {
         // display map
         // get map
         show_one_line_monitor(monitor_buffer);
 
-        // get number  
-
+        // get number
     }
 
     // Handle completion
-    if (!continue_solving && maze_solver->getState() == COMPLETED) {
+    if (!continue_solving && maze_solver->getState() == COMPLETED)
+    {
         show_one_line_monitor("MAZE SOLVED!");
         motor1.setPWM(0);
         motor2.setPWM(0);
-        while(true) {}
+        while (true)
+        {
+        }
     }
 
     // Your existing control loop
     runControlLoop(curr_X, curr_Y, current_angle);
 
     loop_counter++;
-    if (loop_counter > 30000) loop_counter = 0;
+    if (loop_counter > 30000)
+        loop_counter = 0;
     delay(5);
 }
 
@@ -232,55 +236,63 @@ void lidarInitialize()
     delay(50);
 }
 
-void executeCommand(char command, float value, float curr_x, float curr_y, float curr_angle) {
+void executeCommand(char command, float value, float curr_x, float curr_y, float curr_angle)
+{
     previous_X = curr_x;
     previous_Y = curr_y;
-    
+
     // sprintf(monitor_buffer, F("Maze cmd: %c%.0f"), command, value);
     // show_one_line_monitor(monitor_buffer);
-    
-    switch (command) {
-        case 'f':
-            target_distance = value;
-            target_angle = curr_angle;
-            yaw_controller.zeroAndSetTarget(curr_angle, 0);
-            yaw_controller.disable();
-            break;
-            
-        case 'o':
-            target_distance = 0;
-            target_angle = value;
-            float turn_angle = target_angle - curr_angle;
-            if (turn_angle < -180.0f) turn_angle += 360.0f;
-            if (turn_angle > 180.0f) turn_angle -= 360.0f;
-            yaw_controller.zeroAndSetTarget(curr_angle, turn_angle);
-            yaw_controller.enable();
-            break;
+
+    switch (command)
+    {
+    case 'f':
+        target_distance = value;
+        target_angle = curr_angle;
+        yaw_controller.zeroAndSetTarget(curr_angle, 0);
+        yaw_controller.disable();
+        break;
+
+    case 'o':
+        target_distance = 0;
+        target_angle = value;
+        float turn_angle = target_angle - curr_angle;
+        if (turn_angle < -180.0f)
+            turn_angle += 360.0f;
+        if (turn_angle > 180.0f)
+            turn_angle -= 360.0f;
+        yaw_controller.zeroAndSetTarget(curr_angle, turn_angle);
+        yaw_controller.enable();
+        break;
     }
 
     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-    
+
     maze_solver->startMovement(command, value, curr_x, curr_y);
     curr_cmd = command;
 }
 
 // TODO: ADJUST
-void runControlLoop(float curr_X, float curr_Y, float current_angle) {
+void runControlLoop(float curr_X, float curr_Y, float current_angle)
+{
     float lidar_offset = 0;
-    
-    if (curr_cmd == 'f') {
+
+    if (curr_cmd == 'f')
+    {
         // Wall following correction (your existing code)
         float lidar_err_left = 0;
-        if (lidar_left <= WALL_DISTANCE_THRESHOLD) {
+        if (lidar_left <= WALL_DISTANCE_THRESHOLD)
+        {
             lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
         }
-        
+
         float lidar_err_right = 0;
-        if (lidar_right <= WALL_DISTANCE_THRESHOLD) {
+        if (lidar_right <= WALL_DISTANCE_THRESHOLD)
+        {
             lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
         }
-        
+
         float scale = 0.2;
         lidar_offset = scale * (lidar_err_left - lidar_err_right);
     }
@@ -330,6 +342,32 @@ void show_one_line_monitor(const char *str)
         i++;
     }
     display.display();
+}
+
+char *method1_simple_concat(char maze[10][17])
+{
+    int rows = 10;
+    int cols = 17;
+
+    // Calculate required string length
+    int total_length = rows * (cols + 1) + 1; // +1 for null terminator
+
+    // Create result string
+    char result[total_length];
+    int index = 0;
+
+    // Copy characters row by row
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            result[index++] = maze[i][j];
+        }
+        result[index++] = '\n';
+    }
+    result[index] = '\0'; // Null terminate
+
+    return result;
 }
 
 /*********************************

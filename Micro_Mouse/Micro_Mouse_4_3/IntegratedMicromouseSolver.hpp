@@ -46,29 +46,49 @@ struct Cell
     bool visited = false;
     int8_t flood_value = -1;
 
-    bool hasWall(Direction dir) const {
-        switch (dir) {
-            case NORTH: return walls & NORTH_MASK;
-            case EAST:  return walls & EAST_MASK;
-            case SOUTH: return walls & SOUTH_MASK;
-            case WEST:  return walls & WEST_MASK;
-            default:    return true;
+    bool hasWall(Direction dir) const
+    {
+        switch (dir)
+        {
+        case NORTH:
+            return walls & NORTH_MASK;
+        case EAST:
+            return walls & EAST_MASK;
+        case SOUTH:
+            return walls & SOUTH_MASK;
+        case WEST:
+            return walls & WEST_MASK;
+        default:
+            return true;
         }
     }
 
-    void setWall(Direction dir, bool hasWall) {
+    void setWall(Direction dir, bool hasWall)
+    {
         uint8_t mask = 0;
-        switch (dir) {
-            case NORTH: mask = NORTH_MASK; break;
-            case EAST:  mask = EAST_MASK;  break;
-            case SOUTH: mask = SOUTH_MASK; break;
-            case WEST:  mask = WEST_MASK;  break;
+        switch (dir)
+        {
+        case NORTH:
+            mask = NORTH_MASK;
+            break;
+        case EAST:
+            mask = EAST_MASK;
+            break;
+        case SOUTH:
+            mask = SOUTH_MASK;
+            break;
+        case WEST:
+            mask = WEST_MASK;
+            break;
         }
 
-        if (hasWall) {
-            walls |= mask;   // set bit
-        } else {
-            walls &= ~mask;  // clear bit
+        if (hasWall)
+        {
+            walls |= mask; // set bit
+        }
+        else
+        {
+            walls &= ~mask; // clear bit
         }
     }
 };
@@ -158,19 +178,18 @@ private:
     Direction current_direction = NORTH;
 
     // Maze array
-    char displayMaze [10][17] = {
-        {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '},   // row 0
-        {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '},   // row 1
-        {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '},   // row 2
-        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 3
-        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 4
-        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 5
-        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 6
-        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'},   // row 7
-        {' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' '},   // row 8
-        {' ', ' ', ' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' ', ' ', ' '}    // row 9
+    char displayMaze[10][17] = {
+        {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '}, // row 0
+        {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '}, // row 1
+        {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '}, // row 2
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 3
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 4
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 5
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 6
+        {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 7
+        {' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' '}, // row 8
+        {' ', ' ', ' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' ', ' ', ' '}  // row 9
     };
-
 
     MazeState state = EXPLORING;
     SimpleStack backtrack_stack;
@@ -388,32 +407,38 @@ public:
     MazeState getState() const { return state; }
     bool isMovementInProgress() const { return movement_in_progress; }
 
-    char getDisplayMaze[10][17] {
-        for (int x=0;x<=size;x++) {
-            for (int y=0;y<=size;y++) {
+    void getDisplayMaze(char **ret)
+    {
+        for (int x = 0; x <= MAX_MAZE_WIDTH; x++)
+        {
+            for (int y = 0; y <= MAX_MAZE_HEIGHT; y++)
+            {
                 int row, col;
                 Cell curr = maze[x][y];
-                if (!curr.hasWall(NORTH)) {
+                if (!curr.hasWall(NORTH))
+                {
                     row = x;
-                    col = 1+2y;
-                    displayMaze[row][col]=' '
+                    col = 1 + 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
-                if (!curr.hasWall(SOUTH))  {
+                if (!curr.hasWall(SOUTH))
+                {
                     row = x + 1;
-                    col = 1+2y;
-                    displayMaze[row][col]=' '
+                    col = 1 + 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
-                if (!curr.hasWall(EAST))  {
+                if (!curr.hasWall(EAST))
+                {
                     row = x + 1;
-                    col = 2y;
-                    displayMaze[row][col]=' '
+                    col = 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
-                if (!curr.hasWall(WEST))  {
+                if (!curr.hasWall(WEST))
+                {
                     row = x + 1;
-                    col = 2y;
-                    displayMaze[row][col]=' '
+                    col = 2 * y;
+                    displayMaze[row][col] = ' ';
                 }
-
             }
         }
 
