@@ -2,7 +2,7 @@
 
 // Maze settings
 #define CELL_SIZE 180
-#define MAX_MAZE_WIDTH 9 // Reduced for Arduino Nano memory
+#define MAX_MAZE_WIDTH 9
 #define MAX_MAZE_HEIGHT 9
 #define MAX_QUEUE_SIZE 69
 #define MAX_STACK_SIZE 69
@@ -10,8 +10,8 @@
 
 // Control thresholds
 #define CMD_COMPLETE_STABLE_CYCLES 20
-#define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 10.0f
+#define POSITION_ERROR_THRESHOLD 10.0f
+#define ANGLE_ERROR_THRESHOLD 5.0f
 #define MOTOR_OUTPUT_THRESHOLD 40
 #define YAW_OUTPUT_THRESHOLD 30.0f
 #define WALL_DISTANCE_THRESHOLD 80.0f
@@ -178,20 +178,7 @@ private:
     Position target_grid_pos;
     Direction current_direction = NORTH;
     int num_visited = 0;
-
-    // // Maze array
-    // char displayMaze[10][17] = {
-    //     {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '}, // row 0
-    //     {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '}, // row 1
-    //     {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '}, // row 2
-    //     {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 3
-    //     {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 4
-    //     {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 5
-    //     {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 6
-    //     {'|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|'}, // row 7
-    //     {' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' '}, // row 8
-    //     {' ', ' ', ' ', ' ', '|', '_', '|', '_', '|', '_', '|', '_', '|', ' ', ' ', ' ', ' '}  // row 9
-    // };
+    bool startMovementFlag = false;
 
     MazeState state = EXPLORING;
     SimpleStack backtrack_stack;
@@ -241,7 +228,7 @@ public:
     Position worldToGrid(float x_mm, float y_mm)
     {
         int grid_x = (int)(x_mm / CELL_SIZE);
-        int grid_y = (int)(y_mm / CELL_SIZE);
+        int grid_y = (int)(-y_mm / CELL_SIZE);
         return Position(grid_x, grid_y);
     }
 
@@ -285,11 +272,11 @@ public:
         switch (dir)
         {
         case NORTH:
-            return Position(pos.x, pos.y + 1);
+            return Position(pos.x, pos.y - 1);
         case EAST:
             return Position(pos.x + 1, pos.y);
         case SOUTH:
-            return Position(pos.x, pos.y - 1);
+            return Position(pos.x, pos.y + 1);
         case WEST:
             return Position(pos.x - 1, pos.y);
         default:
@@ -318,31 +305,29 @@ public:
             float distance_traveled = sqrt(delta_x * delta_x + delta_y * delta_y);
             float position_error = movement_target_value - distance_traveled;
 
-            if (abs(position_error) <= POSITION_ERROR_THRESHOLD &&
-                abs(motor1_output) < MOTOR_OUTPUT_THRESHOLD &&
-                abs(motor2_output) < MOTOR_OUTPUT_THRESHOLD)
+            if (abs(position_error) <= POSITION_ERROR_THRESHOLD)
             {
                 stable_cycles++;
             }
             else
             {
-                stable_cycles = 0;
+                // stable_cycles = 0;
             }
             completed = (stable_cycles >= CMD_COMPLETE_STABLE_CYCLES);
         }
         else if (current_movement_command == 'o')
         {
-            float angle_error = angleDifference(movement_target_value, curr_angle);
+            float delta_angle = movement_target_value - curr_angle; 
+            while (delta_angle > 180.0f) delta_angle -= 360.0f; 
+            while (delta_angle < -180.0f) delta_angle += 360.0f; 
 
-            if (angle_error <= ANGLE_ERROR_THRESHOLD &&
-                abs(motor1_output) < YAW_OUTPUT_THRESHOLD &&
-                abs(motor2_output) < YAW_OUTPUT_THRESHOLD)
+            if (abs(delta_angle) <= ANGLE_ERROR_THRESHOLD)
             {
                 stable_cycles++;
             }
             else
             {
-                stable_cycles = 0;
+                // stable_cycles = 0;
             }
             completed = (stable_cycles >= CMD_COMPLETE_STABLE_CYCLES);
         }
@@ -351,6 +336,7 @@ public:
         {
             movement_in_progress = false;
             stable_cycles = 0;
+            delay(10);
         }
 
         return completed;
@@ -364,6 +350,7 @@ public:
         movement_start_x = start_x;
         movement_start_y = start_y;
         movement_in_progress = true;
+        startMovementFlag = true; 
         stable_cycles = 0;
     }
 
@@ -409,7 +396,14 @@ public:
 
     MazeState getState() const { return state; }
     bool isMovementInProgress() const { return movement_in_progress; }
-    int getPercentage() const { return static_cast<int>(100.0f * num_visited / TOTAL_CELLS); }
+    bool canStartMovement() {
+        if (startMovementFlag) {
+            startMovementFlag = false; 
+            return true; 
+        }
+        return false; 
+    }
+    int getPercentage() const { return static_cast<int>(100.0 * num_visited / TOTAL_CELLS); }
 
     void getDisplayMaze(char ret[10][17])
     {
@@ -713,21 +707,5 @@ private:
     float getCurrentAngle()
     {
         return fmod(current_direction * 90.0f, 360.0f);
-    }
-
-    float normalizeAngle(float angle) const
-    {
-        float result = fmod(angle, 360.0f);
-        if (result < 0)
-            result += 360.0f;
-        return result;
-    }
-
-    float angleDifference(float a, float b) const
-    {
-        float diff = normalizeAngle(a - b);
-        if (diff > 180.0f)
-            diff = 360.0f - diff;
-        return diff;
     }
 };
