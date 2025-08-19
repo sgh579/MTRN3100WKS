@@ -4,8 +4,8 @@
 #include <string.h>
 
 // Arduino / third-party libraries
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <SSD1306Ascii.h>        // Memory-efficient OLED library
+#include <SSD1306AsciiWire.h>    // I2C version
 #include <MPU6050_light.h>
 #include <SPI.h>
 #include <VL6180X.h>
@@ -33,11 +33,8 @@
 #define MOT2PWM 9
 #define MOT2DIR 10
 
-// OLED display settings
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 24 // OLED display height, in pixels
-#define OLED_RESET -1
-#define SCREEN_ADDRESS 0x3C
+// OLED display settings - SSD1306Ascii
+#define I2C_ADDRESS 0x3C
 
 // Maze settings
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
@@ -50,8 +47,7 @@
 #define YAW_OUTPUT_THRESHOLD 30.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f // TODO: ADJUST
 #define DESIRED_WALL_DISTANCE 50.0f
-
-// Global variables
+#define WALL_DISTANCE_THRESHOLD 100.0f
 
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
@@ -61,7 +57,7 @@ mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 1);
 mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM, MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM, MOT2DIR);
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+SSD1306AsciiWire oled;  // Memory-efficient OLED object
 MPU6050 mpu(Wire);
 VL6180X sensor1; // left
 VL6180X sensor2; // front
@@ -80,7 +76,7 @@ char curr_cmd = '\0';
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0;
 
-float target_distance = 0; // Target for the robot to travel. Change this value and it applies in the feedbacj control loop
+float target_distance = 0; // Target for the robot to travel. Change this value and it applies in the feedback control loop
 float target_angle = 0;
 
 float target_motion_rotation_radians = 0; // Target motion rotation in radians, calculated based on the target distance and robot specifications
@@ -110,14 +106,14 @@ void setup()
     delay(1000);
     mpu.calcOffsets(true, true);
 
-    // screen
-    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
-    {
-        for (;;)
-            ; // Don't proceed, loop forever
-    }
+    // Initialize SSD1306Ascii display - memory efficient
+    oled.begin(&Adafruit128x64, I2C_ADDRESS);
+    oled.setFont(Adafruit5x7);
+    oled.clear();
 
-    display.display();
+    // oled.println("Helloooo");
+
+    
     delay(1000); // Pause for 1 seconds
 
     // setup zero reference for the pid controllers
@@ -135,6 +131,9 @@ void setup()
 
 void loop()
 {
+    
+    // delay(5);
+    // return;
     // Read sensors
     encoder_odometry.update(encoder.getLeftRotation(), encoder.getRightRotation());
     mpu.update();
@@ -168,7 +167,7 @@ void loop()
         executeCommand(next_command, next_value, curr_X, curr_Y, current_angle);
     }
 
-    // TODO: display map and completion
+    // Display map and completion
     if (maze_solver->getState() == MOVING_TO_TARGET)
     {
         char map[10][17];
@@ -276,7 +275,6 @@ void executeCommand(char command, float value, float curr_x, float curr_y, float
     curr_cmd = command;
 }
 
-// TODO: ADJUST
 void runControlLoop(float curr_X, float curr_Y, float current_angle)
 {
     float lidar_offset = 0;
@@ -330,42 +328,50 @@ float angleDifference(float a, float b)
     return diff;
 }
 
-// thisfunction shows one character array on the OLED display
-// it can't be called in high frequency
+// Memory-efficient display function using SSD1306Ascii
 void show_one_line_monitor(const char *str)
 {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    int i = 0;
-    while (str[i] != '\0')
-    {
-        display.write(str[i]);
-        i++;
-    }
-    display.display();
+    oled.clear();
+    oled.println(str);
 }
 
 void formatDisplayMap(char maze[10][17], int percentage)
 {
+    // Format the display buffer first, then show it
     int rows = 10;
     int cols = 17;
-
     int index = 0;
 
-    // Copy characters row by row into the static buffer
-    for (int i = 0; i < rows; i++)
+    // Build display string in monitor_buffer
+    // SSD1306Ascii can show about 8 lines of text with 5x7 font on 128x64 display
+    // Display first 6 rows of maze, leave 2 lines for progress info
+    int max_display_rows = min(6, rows);
+    int max_display_cols = min(21, cols); // 128/6 ≈ 21 chars per line
+    
+    // Clear buffer
+    monitor_buffer[0] = '\0';
+    
+    for (int i = 0; i < max_display_rows; i++)
     {
-        for (int j = 0; j < cols; j++)
+        // Copy each row of the maze
+        for (int j = 0; j < max_display_cols && j < cols; j++)
         {
-            monitor_buffer[index++] = maze[i][j];
+            if (index < 255) // Prevent buffer overflow
+            {
+                monitor_buffer[index++] = maze[i][j];
+            }
         }
-        monitor_buffer[index++] = '\n';
+        if (index < 255)
+        {
+            monitor_buffer[index++] = '\n';
+        }
     }
-
+    
     // Add percentage text at the end
-    index += sprintf(&monitor_buffer[index], "Progress: %d%%", percentage);
+    if (index < 240) // Leave room for percentage text
+    {
+        index += sprintf(&monitor_buffer[index], "Progress: %d%%", percentage);
+    }
 
     monitor_buffer[index] = '\0'; // Null terminate
 }
