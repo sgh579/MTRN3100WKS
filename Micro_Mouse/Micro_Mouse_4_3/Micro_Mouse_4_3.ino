@@ -157,17 +157,23 @@ void loop()
         executeCommand(next_command, next_value, curr_X, curr_Y, current_angle);
     }
 
-    // Display map and completion
-    if (loop_counter % 1000 == 0) {
-        char map[10][17];
-        maze_solver.getDisplayMaze(map);
+    // // Display map and completion
+    // if (loop_counter % 1000 == 0) {
+    //     char map[10][17];
+    //     maze_solver.getDisplayMaze(map);
 
-        int percentage = maze_solver.getPercentage();
+    //     int percentage = maze_solver.getPercentage();
 
-        oled.clear();
-        for (int i = 0; i < 10; i++) {
-            oled.println(map[i]);
-        }
+    //     oled.clear();
+    //     for (int i = 0; i < 10; i++) {
+    //         oled.println(map[i]);
+    //     }
+    // }
+
+    // Debugging, display cmd
+    if (loop_counter % 200 == 0) {
+        sprintf(monitor_buffer, "%c %d", next_command, (int) next_value);
+        show_one_line_monitor(monitor_buffer);
     }
 
     // Handle completion
@@ -260,24 +266,24 @@ void runControlLoop(float curr_X, float curr_Y, float current_angle)
 {
     float lidar_offset = 0;
 
-    if (curr_cmd == 'f')
-    {
-        // Wall following correction (your existing code)
-        float lidar_err_left = 0;
-        if (lidar_left <= WALL_DISTANCE_THRESHOLD)
-        {
-            lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
-        }
+    // if (curr_cmd == 'f')
+    // {
+    //     // Wall following correction (your existing code)
+    //     float lidar_err_left = 0;
+    //     if (lidar_left <= WALL_DISTANCE_THRESHOLD)
+    //     {
+    //         lidar_err_left = DESIRED_WALL_DISTANCE - lidar_left;
+    //     }
 
-        float lidar_err_right = 0;
-        if (lidar_right <= WALL_DISTANCE_THRESHOLD)
-        {
-            lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
-        }
+    //     float lidar_err_right = 0;
+    //     if (lidar_right <= WALL_DISTANCE_THRESHOLD)
+    //     {
+    //         lidar_err_right = DESIRED_WALL_DISTANCE - lidar_right;
+    //     }
 
-        float scale = 0.2;
-        lidar_offset = scale * (lidar_err_left - lidar_err_right);
-    }
+    //     float scale = 0.2;
+    //     lidar_offset = scale * (lidar_err_left - lidar_err_right);
+    // }
 
     // PID control
     float target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
