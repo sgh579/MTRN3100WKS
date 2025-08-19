@@ -39,18 +39,18 @@
 // Cycle threshold required for instruction completion determination
 #define CMD_COMPLETE_STABLE_CYCLES 20
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 1.0f
-#define MOTOR_OUTPUT_THRESHOLD 10
-#define YAW_OUTPUT_THRESHOLD 10.0f
+#define ANGLE_ERROR_THRESHOLD 3.0f
+#define MOTOR_OUTPUT_THRESHOLD 40
+#define YAW_OUTPUT_THRESHOLD 30.0f
 
 // Global variables
 
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B,EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0);
-mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
-mtrn3100::PIDController yaw_controller(0.25, 0.5, 0);
+mtrn3100::PIDController motor1_encoder_position_controller(35, 0.05, 0.1); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(35, 0.05, 0.1);
+mtrn3100::PIDController yaw_controller(0.25, 0.3, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -60,7 +60,7 @@ MPU6050 mpu(Wire);
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
 int cmd_pointer = 0; // Pointer to the current command in the command sequence
-char commands[] = "frflflfr"; // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
+char commands[] = "lfrffrfl"; // Command sequence for the robot to follow. Length of the command sequence can be changed, and we can adapt to it in the code
 
 float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
 float previous_Y = 0; 
@@ -85,10 +85,6 @@ char monitor_buffer[64];
 // Outputs for the PID controllers
 int motor1_encoder_position_controller_output = 0;
 int motor2_encoder_position_controller_output = 0;
-
-float curr_x = 0;
-float curr_y = 0;
-float current_angle = 0;
 
 bool finished = false;
 
@@ -161,7 +157,7 @@ void loop() {
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
-                    
+                    yaw_controller.disable();
 
                 break;
                 case 'l':
@@ -172,6 +168,7 @@ void loop() {
                     yaw_controller.zeroAndSetTarget(current_angle, 90);
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.enable();
                     
                 break;
                 case 'r':
@@ -182,6 +179,7 @@ void loop() {
                     if (target_angle < 0) target_angle += 360.0f;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.enable();
                 break;
                 default:
                     Serial.print("Invalid command: ");
