@@ -15,6 +15,8 @@ import cv2
 import numpy as np
 from collections import deque
 
+PIXEL2MM_RATIO = 0.75
+
 def bresenham_line(x0: int, y0: int, x1: int, y1: int):
     pts = []
     dx = abs(x1 - x0)
@@ -397,6 +399,7 @@ def continuous_bfs(
         if n is None or n.pixel_x is None or n.pixel_y is None:
             continue
         x, y = int(round(n.pixel_x)), int(round(n.pixel_y))
+        # print(f'[DEBUG] x, y of nid {nid} : {x}, {y}')
         if 0 <= x < W and 0 <= y < H:
             pts.append([x, y])
 
@@ -413,4 +416,79 @@ def continuous_bfs(
     cv2.circle(vis, (int(s.pixel_x), int(s.pixel_y)), node_radius+1, (0, 255, 255), -1, cv2.LINE_AA)  # 起点黄色
     cv2.circle(vis, (int(e.pixel_x), int(e.pixel_y)), node_radius+1, (255, 0, 0),   -1, cv2.LINE_AA)  # 终点蓝色
 
+    cmd_str = pts2cmd(pts)
+    print(f'Final arduino cmd: {cmd_str}')
+
     return vis
+
+def pts2cmd(pts)->str:
+    i = 0
+    prev_x = 0
+    prev_y = 0
+    cmd_list = []
+    for waypoint in pts:
+
+        if i == 0:
+            prev_x = round(waypoint[0] * PIXEL2MM_RATIO)
+            prev_y = round(waypoint[1] * PIXEL2MM_RATIO)
+            i += 1
+            continue
+
+        x = round(waypoint[0] * PIXEL2MM_RATIO)
+        y = round(waypoint[1] * PIXEL2MM_RATIO)
+        # 如果x, y和上一个坐标有一个相同，使用直线运动
+        if x == prev_x:
+            if y > prev_y:
+                cmd_list.append('o180')
+            else:
+                cmd_list.append('o0')
+            cmd_list.append(f'f{abs(y - prev_y)}')
+        elif y == prev_y:
+            if x > prev_x:
+                cmd_list.append('o270')
+            else:
+                cmd_list.append('o90')            
+            cmd_list.append(f'f{abs(x - prev_x)}')
+        else:
+            dy = x - prev_x
+            dx = y - prev_y
+            orientaion_rad = math.atan2(dy, dx)
+            deg = math.degrees(orientaion_rad) + 180
+            cmd_list.append(f'o{round(deg, 1)}')
+            cmd_list.append(f'f{round(math.sqrt(dx*dx + dy*dy))}')
+        i += 1
+        [prev_x, prev_y] = [x, y]
+
+    
+    # print(cmd_list)
+
+    # 删去多余旋转
+    result = []
+    last_o = None  # 上一次保留的 o 的角度
+
+    for cmd in cmd_list:
+        if cmd.startswith("o"):
+            angle = cmd[1:]  # 提取角度值（字符串）
+            if angle != last_o:   # 和上次不一样才保留
+                result.append(cmd)
+                last_o = angle
+            # 相同的话跳过
+        else:  # f...
+            result.append(cmd)
+        
+    merged = []
+    acc = 0
+    for cmd in result:
+        if cmd.startswith("f"):
+            acc += int(float(cmd[1:]))  # 确保整数
+        else:  # 遇到 o，先结算前面累计的 f
+            if acc != 0:
+                merged.append("f" + str(acc))
+                acc = 0
+            merged.append(cmd)
+    # 最后可能还剩一个 f 没结算
+    if acc != 0:
+        merged.append("f" + str(acc))
+
+    cmd_str = '|'.join(merged)
+    return cmd_str
