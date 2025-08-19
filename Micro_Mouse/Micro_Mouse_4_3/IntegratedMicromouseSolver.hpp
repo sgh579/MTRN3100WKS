@@ -2,10 +2,11 @@
 
 // Maze settings
 #define CELL_SIZE 180
-#define MAX_MAZE_WIDTH 8 // Reduced for Arduino Nano memory
-#define MAX_MAZE_HEIGHT 8
-#define MAX_QUEUE_SIZE 64
-#define MAX_STACK_SIZE 64
+#define MAX_MAZE_WIDTH 9 // Reduced for Arduino Nano memory
+#define MAX_MAZE_HEIGHT 9
+#define MAX_QUEUE_SIZE 81
+#define MAX_STACK_SIZE 81
+#define TOTAL_CELLS 69
 
 // Control thresholds
 #define CMD_COMPLETE_STABLE_CYCLES 20
@@ -156,6 +157,7 @@ private:
     Position start_grid_pos;
     Position target_grid_pos;
     Direction current_direction = NORTH;
+    int num_visited = 0;
 
     MazeState state = EXPLORING;
     SimpleStack backtrack_stack;
@@ -173,6 +175,7 @@ public:
           current_movement_command('\0'),
           movement_target_value(0), stable_cycles(0)
     {
+        // TODO: fix for actual shape
         // Initialize all cells
         for (int y = 0; y < MAX_MAZE_HEIGHT; y++)
         {
@@ -346,6 +349,7 @@ public:
 
         // Mark current cell as visited
         maze[current_grid_pos.y][current_grid_pos.x].visited = true;
+        num_visited++;
 
         // Check if movement is complete before planning next move
         if (movement_in_progress)
@@ -372,6 +376,7 @@ public:
 
     MazeState getState() const { return state; }
     bool isMovementInProgress() const { return movement_in_progress; }
+    float getPercentage() const { return 100.0f * num_visited / TOTAL_CELLS; }
 
 private:
     float movement_start_x, movement_start_y;

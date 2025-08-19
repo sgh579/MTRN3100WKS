@@ -170,7 +170,7 @@ void loop()
 
     // TODO: display map and completion
     if (maze_solver->getState() == MOVING_TO_TARGET) {
-
+        
     }
 
     // Handle completion
