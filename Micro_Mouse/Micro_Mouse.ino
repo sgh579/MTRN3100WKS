@@ -13,7 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f50|o90|f50|o180|f50|o270|f50|o0";
+char *script = "f180|o180|f180|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -49,8 +49,8 @@ char *script = "f50|o90|f50|o180|f50|o270|f50|o0";
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(35, 1, 2); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(35, 1, 2);
+mtrn3100::PIDController motor1_encoder_position_controller(10, 1, 2); // 0.05
+mtrn3100::PIDController motor2_encoder_position_controller(10, 1, 2);
 mtrn3100::PIDController yaw_controller(0.02, 0.1, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
@@ -357,6 +357,7 @@ void forward_Update_Target() {
     
     // Apply corrections to motor targets
     float yaw_output = -0.01f * yaw_controller.compute(current_angle);
+    yaw_output = 0;
 
     motor1_encoder_position_controller.setTarget(
         (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
