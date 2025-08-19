@@ -13,7 +13,8 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "o90|o180|o270|o0";
+char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
+// char *script = "o90|o180|o270|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -42,7 +43,7 @@ char *script = "o90|o180|o270|o0";
 // Cycle threshold required for instruction completion determination
 #define CMD_COMPLETE_STABLE_CYCLES 100
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD 25
+#define ANGLE_THRESHOLD 2.0f
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 80.0f 
 #define SMALLEST_WALL_DISTANCE_THRESHOLD 15
 #define DESIRED_WALL_DISTANCE 50.0f
@@ -54,8 +55,8 @@ char *script = "o90|o180|o270|o0";
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
 mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0); 
-mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
-mtrn3100::PIDController yaw_controller(1.5, 0.001, 0);
+mtrn3100::PIDController motor2_encoder_position_controller(100, 0.1, 0);
+mtrn3100::PIDController yaw_controller(3, 0.5, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -177,12 +178,14 @@ void loop() {
                     target_angle = current_angle;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.zeroAndSetTarget(0,target_angle);
                 break;
                 case 'o':
                     target_distance = 0;
                     target_angle = value;
                     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
                     motor2_encoder_position_controller.setZeroRef(encoder.getRightRotation());
+                    yaw_controller.zeroAndSetTarget(0,target_angle);
 
                     sprintf(monitor_buffer, "t_a: %d, curr: %d", (int) target_angle, (int) current_angle);
                     show_one_line_monitor(monitor_buffer);              
@@ -276,7 +279,8 @@ bool is_this_cmd_completed() {
         if (position_error <= POSITION_ERROR_THRESHOLD) {
             stable_counter++;
         } else {
-            stable_counter = 0;
+            // stable_counter = 0;
+            // stable_counter -= 1;
         }
         
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
@@ -287,10 +291,11 @@ bool is_this_cmd_completed() {
         }
         
     } else if (prev_cmd == 'o') {
-        if (motor1_encoder_position_controller_output <= ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD ) {
+        if (abs(target_angle-current_angle) <= ANGLE_THRESHOLD ) {
             stable_counter++;
         } else {
-            stable_counter = 0;
+            // stable_counter = 0;
+            // stable_counter -= 1;
         }
         completed = (stable_counter >= CMD_COMPLETE_STABLE_CYCLES);
     }
@@ -360,18 +365,18 @@ void forward_Update_Target() {
     float speed_factor = 1.0f;
 
     motor1_encoder_position_controller.setTarget(
-        (target_motion_rotation_radians * speed_factor)  + lidar_correction
+        (target_motion_rotation_radians * speed_factor)
     );
     motor2_encoder_position_controller.setTarget(
-        (-target_motion_rotation_radians * speed_factor) + lidar_correction
+        (-target_motion_rotation_radians * speed_factor)
     );
 }
 
 
-void turn_Update_Target() {
-    // float ratio_by_experiment = 0.046924;
-    yaw_controller.setTarget(target_angle);
-}
+// void turn_Update_Target() {
+//     // float ratio_by_experiment = 0.046924;
+//     yaw_controller.setTarget(target_angle);
+// }
 
 // Replace your main loop's movement control section with this:
 void MovementControl() {
@@ -380,10 +385,10 @@ void MovementControl() {
     if (prev_cmd == 'f') {
         forward_Update_Target();
         // Compute and apply motor outputs
-        motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
-        motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
+        motor1_encoder_position_controller_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation())-yaw_controller.compute(current_angle);
+        motor2_encoder_position_controller_output = motor2_encoder_position_controller.compute(encoder.getRightRotation())-yaw_controller.compute(current_angle);
     } else if (prev_cmd == 'o') {
-        turn_Update_Target();
+        // turn_Update_Target();
         // Compute and apply motor outputs
         motor1_encoder_position_controller_output = -yaw_controller.compute(current_angle);
         motor2_encoder_position_controller_output = -yaw_controller.compute(current_angle);
