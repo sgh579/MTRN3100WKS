@@ -4,8 +4,8 @@
 #define CELL_SIZE 180
 #define MAX_MAZE_WIDTH 9 // Reduced for Arduino Nano memory
 #define MAX_MAZE_HEIGHT 9
-#define MAX_QUEUE_SIZE 81
-#define MAX_STACK_SIZE 81
+#define MAX_QUEUE_SIZE 69
+#define MAX_STACK_SIZE 69
 #define TOTAL_CELLS 69
 
 // Control thresholds
