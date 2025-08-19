@@ -96,8 +96,8 @@ struct Cell
 
 struct Position
 {
-    int x, y;
-    Position(int x = 0, int y = 0) : x(x), y(y) {}
+    uint8_t x, y;
+    Position(uint8_t x = 0, uint8_t y = 0) : x(x), y(y) {}
     bool operator==(const Position &other) const
     {
         return x == other.x && y == other.y;
@@ -351,7 +351,6 @@ public:
         {
             movement_in_progress = false;
             stable_cycles = 0;
-            Serial.println("Movement completed");
         }
 
         return completed;
@@ -382,8 +381,8 @@ public:
         updateMazeFromSensors(left_sensor, front_sensor, right_sensor);
 
         // Mark current cell as visited
+        if (!maze[current_grid_pos.y][current_grid_pos.x].visited) num_visited++;
         maze[current_grid_pos.y][current_grid_pos.x].visited = true;
-        num_visited++;
 
         // Check if movement is complete before planning next move
         if (movement_in_progress)
@@ -414,7 +413,15 @@ public:
 
     void getDisplayMaze(char ret[10][17])
     {
+        // initialise
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 17; j++) {
+                ret[i][j] = ' ';
+            }
+        }
+
         for (int y = 0; y < MAX_MAZE_HEIGHT; y++) {
+            ret[y][16] = '\0'; 
             for (int x = 0; x < MAX_MAZE_WIDTH; x++) {
                 int row, col;
                 Cell curr = maze[x][y];
@@ -451,6 +458,8 @@ private:
 
     bool isExplorationComplete()
     {
+        if (num_visited == TOTAL_CELLS) return true; 
+
         // Check if all reachable cells are visited
         bool reachable[MAX_MAZE_HEIGHT][MAX_MAZE_WIDTH];
 
@@ -482,19 +491,8 @@ private:
                 if (!isValidPosition(next) || reachable[next.y][next.x])
                     continue;
 
-                reachable[next.y][next.x] = true;
+                if (!maze[next.y][next.x].visited) return false;
                 bfs_queue.push(next);
-            }
-        }
-
-        for (int y = 0; y < maze_height; y++)
-        {
-            for (int x = 0; x < maze_width; x++)
-            {
-                if (reachable[y][x] && !maze[y][x].visited)
-                {
-                    return false;
-                }
             }
         }
 
@@ -524,18 +522,15 @@ private:
 
     bool planExplorationMove(float curr_x, float curr_y, char &next_command, float &next_value)
     {
-        if (isExplorationComplete())
-        {
+        if (isExplorationComplete()) {
             state = MOVING_TO_TARGET;
-            Serial.println("Exploration complete! Starting optimal path to target.");
             return planOptimalMove(next_command, next_value);
         }
 
         Direction unvisited_dirs[4];
         int unvisited_count = getUnvisitedNeighbors(current_grid_pos, unvisited_dirs);
 
-        if (unvisited_count > 0)
-        {
+        if (unvisited_count > 0) {
             // Move to unvisited neighbor
             backtrack_stack.push(current_grid_pos);
             Direction target_dir = unvisited_dirs[0];
@@ -553,9 +548,9 @@ private:
             }
             else
             {
+                // TODO: RETURN TO START FIRST, THEN GO TO TARGET
                 // Exploration complete
                 state = MOVING_TO_TARGET;
-                Serial.println("Exploration complete via backtrack! Moving to target.");
                 return planOptimalMove(next_command, next_value);
             }
         }
@@ -568,7 +563,6 @@ private:
         if (current_grid_pos == target_grid_pos)
         {
             state = COMPLETED;
-            Serial.println("Target reached!");
             return false;
         }
 
@@ -584,9 +578,7 @@ private:
                              char &next_command, float &next_value)
     {
         // Calculate turn needed
-        int turn = (target_dir - current_direction + 4) % 4;
-
-        if (turn == 0)
+        if (current_direction == target_dir)
         {
             // Go straight - move one cell
             next_command = 'f';
@@ -599,22 +591,23 @@ private:
         else
         {
             // Turn first
-            float turn_angle = 0;
-            switch (turn)
+            switch (target_dir)
             {
-            case 1:
-                turn_angle = 90;
+            case NORTH:
+                next_value = 0;
                 break; // Turn right
-            case 2:
-                turn_angle = 180;
+            case EAST:
+                next_value = 270;
                 break; // Turn around
-            case 3:
-                turn_angle = -90;
+            case SOUTH:
+                next_value = 180;
+                break; // Turn left
+            case WEST:
+                next_value = 90;
                 break; // Turn left
             }
 
             next_command = 'o';
-            next_value = fmod(getCurrentAngle() + turn_angle + 360.0f, 360.0f);
             startMovement(next_command, next_value, curr_x, curr_y);
 
             current_direction = target_dir;

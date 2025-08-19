@@ -66,33 +66,26 @@ VL6180X sensor3; // right
 IntegratedMicromouseSolver maze_solver(Position(0, 0), Position(3, 3));
 
 
-int sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
-int sensor2_pin = A1; // ENABLE PIN FOR SENSOR 2 41
-int sensor3_pin = A2; // ENABLE PIN FOR SENSOR 3 42
+unsigned char sensor1_pin = A0; // ENABLE PIN FOR SENSOR 1 40
+unsigned char sensor2_pin = A1; // ENABLE PIN FOR SENSOR 2 41
+unsigned char sensor3_pin = A2; // ENABLE PIN FOR SENSOR 3 42
 
 // Global variables
 int loop_counter = 0; // Counter for the loop iterations, used for debugging and control
 
 char curr_cmd = '\0';
 
-float previous_X = 0; // Previous X position of the robot, used to calculate distance traveled between commands
-float previous_Y = 0;
-
 float target_distance = 0; // Target for the robot to travel. Change this value and it applies in the feedback control loop
 float target_angle = 0;
 
 float target_motion_rotation_radians = 0; // Target motion rotation in radians, calculated based on the target distance and robot specifications
 
-float curr_X = 0; // Current X position of the robot based on odometry, updated in each loop iteration
-float curr_Y = 0;
-float current_angle = 0;
-
-int lidar_left = 0;
-int lidar_front = 0;
-int lidar_right = 0;
+unsigned short int lidar_left = 0;
+unsigned short int lidar_front = 0;
+unsigned short int lidar_right = 0;
 
 // buffer
-char monitor_buffer[256];
+char monitor_buffer[50];
 
 void setup()
 {
@@ -112,8 +105,6 @@ void setup()
     oled.begin(&Adafruit128x64, I2C_ADDRESS);
     oled.setFont(Adafruit5x7);
     oled.clear();
-
-    oled.println("Helloooo");
     
     delay(1000); // Pause for 1 seconds
 
@@ -125,16 +116,14 @@ void setup()
     // lidar setup
     lidarInitialize();
 
-    oled.println("there");
-    // maze_solver = new IntegratedMicromouseSolver(Position(0, 0), Position(3, 3));
-
     show_one_line_monitor("ROBOT setup completed");
 }
 
-
 void loop()
 {
-    // Read sensors
+    /**
+     *   Read Sensors
+     */
     encoder_odometry.update(encoder.getLeftRotation(), encoder.getRightRotation());
     mpu.update();
 
@@ -151,7 +140,9 @@ void loop()
     int motor1_output = motor1_encoder_position_controller.compute(encoder.getLeftRotation());
     int motor2_output = motor2_encoder_position_controller.compute(encoder.getRightRotation());
 
-    // Process maze solving
+    /**
+     *   Process maze solving
+     */
     char next_command = '\0';
     float next_value = 0;
 
@@ -162,22 +153,21 @@ void loop()
         next_command, next_value);
 
     // Execute new command if one was generated
-    if (next_command != '\0' && !maze_solver.isMovementInProgress())
-    {
+    if (next_command != '\0' && !maze_solver.isMovementInProgress()) {
         executeCommand(next_command, next_value, curr_X, curr_Y, current_angle);
     }
 
     // Display map and completion
-    if (maze_solver.getState() == MOVING_TO_TARGET)
-    {
+    if (loop_counter % 1000 == 0) {
         char map[10][17];
         maze_solver.getDisplayMaze(map);
 
         int percentage = maze_solver.getPercentage();
 
-        formatDisplayMap(map, percentage);
-
-        show_one_line_monitor(monitor_buffer);
+        oled.clear();
+        for (int i = 0; i < 10; i++) {
+            oled.println(map[i]);
+        }
     }
 
     // Handle completion
@@ -186,9 +176,7 @@ void loop()
         show_one_line_monitor("MAZE SOLVED!");
         motor1.setPWM(0);
         motor2.setPWM(0);
-        while (true)
-        {
-        }
+        while (true) {}
     }
 
     // Your existing control loop
@@ -240,32 +228,25 @@ void lidarInitialize()
 
 void executeCommand(char command, float value, float curr_x, float curr_y, float curr_angle)
 {
-    previous_X = curr_x;
-    previous_Y = curr_y;
+    switch (command) {
+        case 'f':
+            target_distance = value;
+            target_angle = curr_angle;
+            yaw_controller.zeroAndSetTarget(curr_angle, 0);
+            yaw_controller.disable();
+            break;
 
-    // sprintf(monitor_buffer, F("Maze cmd: %c%.0f"), command, value);
-    // show_one_line_monitor(monitor_buffer);
-
-    switch (command)
-    {
-    case 'f':
-        target_distance = value;
-        target_angle = curr_angle;
-        yaw_controller.zeroAndSetTarget(curr_angle, 0);
-        yaw_controller.disable();
-        break;
-
-    case 'o':
-        target_distance = 0;
-        target_angle = value;
-        float turn_angle = target_angle - curr_angle;
-        if (turn_angle < -180.0f)
-            turn_angle += 360.0f;
-        if (turn_angle > 180.0f)
-            turn_angle -= 360.0f;
-        yaw_controller.zeroAndSetTarget(curr_angle, turn_angle);
-        yaw_controller.enable();
-        break;
+        case 'o':
+            target_distance = 0;
+            target_angle = value;
+            float turn_angle = target_angle - curr_angle;
+            if (turn_angle < -180.0f)
+                turn_angle += 360.0f;
+            if (turn_angle > 180.0f)
+                turn_angle -= 360.0f;
+            yaw_controller.zeroAndSetTarget(curr_angle, turn_angle);
+            yaw_controller.enable();
+            break;
     }
 
     motor1_encoder_position_controller.setZeroRef(encoder.getLeftRotation());
@@ -333,45 +314,4 @@ void show_one_line_monitor(const char *str)
 {
     oled.clear();
     oled.println(str);
-}
-
-void formatDisplayMap(char maze[10][17], int percentage)
-{
-    // Format the display buffer first, then show it
-    int rows = 10;
-    int cols = 17;
-    int index = 0;
-
-    // Build display string in monitor_buffer
-    // SSD1306Ascii can show about 8 lines of text with 5x7 font on 128x64 display
-    // Display first 6 rows of maze, leave 2 lines for progress info
-    int max_display_rows = min(6, rows);
-    int max_display_cols = min(21, cols); // 128/6 ≈ 21 chars per line
-    
-    // Clear buffer
-    monitor_buffer[0] = '\0';
-    
-    for (int i = 0; i < max_display_rows; i++)
-    {
-        // Copy each row of the maze
-        for (int j = 0; j < max_display_cols && j < cols; j++)
-        {
-            if (index < 255) // Prevent buffer overflow
-            {
-                monitor_buffer[index++] = maze[i][j];
-            }
-        }
-        if (index < 255)
-        {
-            monitor_buffer[index++] = '\n';
-        }
-    }
-    
-    // Add percentage text at the end
-    if (index < 240) // Leave room for percentage text
-    {
-        index += sprintf(&monitor_buffer[index], "Progress: %d%%", percentage);
-    }
-
-    monitor_buffer[index] = '\0'; // Null terminate
 }
