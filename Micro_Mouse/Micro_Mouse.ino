@@ -13,7 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "f180|o180|f180|o0";
+char *script = "o180";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -49,8 +49,8 @@ char *script = "f180|o180|f180|o0";
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
 mtrn3100::EncoderOdometry encoder_odometry(15.5, 82); 
-mtrn3100::PIDController motor1_encoder_position_controller(10, 1, 2); // 0.05
-mtrn3100::PIDController motor2_encoder_position_controller(10, 1, 2);
+mtrn3100::PIDController motor1_encoder_position_controller(100, 0.01, 0); 
+mtrn3100::PIDController motor2_encoder_position_controller(100, 0.01, 0);
 mtrn3100::PIDController yaw_controller(0.02, 0.1, 0);
 mtrn3100::Motor motor1(MOT1PWM,MOT1DIR);
 mtrn3100::Motor motor2(MOT2PWM,MOT2DIR);
@@ -369,7 +369,9 @@ void forward_Update_Target() {
 
 
 void turn_Update_Target() {
-    float yaw_output = -0.5 * yaw_controller.compute(current_angle);
+    // float yaw_output = -0.5 * yaw_controller.compute(current_angle);
+    float ratio_by_experiment = 0.046924;
+    float yaw_output = target_angle * ratio_by_experiment;
     motor1_encoder_position_controller.setTarget(yaw_output);
     motor2_encoder_position_controller.setTarget(yaw_output);
 }
@@ -396,6 +398,10 @@ void MovementControl() {
     
     motor1.setPWM(motor1_encoder_position_controller_output);
     motor2.setPWM(motor2_encoder_position_controller_output);
+    Serial.print("motor1_encoder_position_controller_output: ");
+    Serial.println(motor1_encoder_position_controller_output);
+    Serial.print("motor2_encoder_position_controller_output: ");
+    Serial.println(motor2_encoder_position_controller_output);
 }
 
 // a data structure of grid and localization
