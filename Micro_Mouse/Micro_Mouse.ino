@@ -13,7 +13,7 @@
 #include <math.h> 
 #include <VL6180X.h>
 
-char *script = "o180";
+char *script = "f180|o180|f180|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
@@ -40,11 +40,12 @@ char *script = "o180";
 #define CELL_SIZE 180 // Size of the cell in mm, used for distance calculations
 
 // Cycle threshold required for instruction completion determination
-#define CMD_COMPLETE_STABLE_CYCLES 100 
+#define CMD_COMPLETE_STABLE_CYCLES 50 
 #define POSITION_ERROR_THRESHOLD 5.0f
-#define ANGLE_ERROR_THRESHOLD 1.0f
+#define ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD 25
 #define BIGGEST_WALL_DISTANCE_THRESHOLD 100.0f 
 #define DESIRED_WALL_DISTANCE 50.0f
+#define DELAY_BETWEEN_CMD_VALUE 25
 
 // Global objects
 mtrn3100::DualEncoder encoder(EN_1_A, EN_1_B, EN_2_A, EN_2_B);
@@ -191,7 +192,7 @@ void loop() {
             commands.next();
         }        
         target_motion_rotation_radians = (target_distance ) / R;
-        delay_between_cmd = 50;
+        delay_between_cmd = DELAY_BETWEEN_CMD_VALUE;
         // delay for a while after one cmd is executed
     }
 
@@ -281,11 +282,7 @@ bool is_this_cmd_completed() {
         }
         
     } else if (prev_cmd == 'o') {
-        // Turn completion logic remains the same
-        float angle_error = target_angle - current_angle;
-        angle_error = angle_error>0? angle_error: -angle_error;
-        
-        if (angle_error <= ANGLE_ERROR_THRESHOLD ) {
+        if (motor1_encoder_position_controller_output <= ANGLE2WHEEL_CONTROLLEROUTPUT_THRESHOLD ) {
             stable_counter++;
         } else {
             stable_counter = 0;
