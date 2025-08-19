@@ -227,9 +227,12 @@ public:
     // Convert real-world position to grid coordinates
     Position worldToGrid(float x_mm, float y_mm)
     {
-        int grid_x = (int)(x_mm / CELL_SIZE);
-        int grid_y = (int)(-y_mm / CELL_SIZE);
-        return Position(grid_x, grid_y);
+        float grid_x = x_mm/CELL_SIZE - start_grid_pos.x;
+        float grid_y = -(y_mm/CELL_SIZE - start_grid_pos.y);
+
+        // int grid_x = (int)(delta_x / CELL_SIZE);
+        // int grid_y = (int)(delta_y / CELL_SIZE);
+        return Position((int) floor(grid_x + 0.5), (int) floor(grid_y + 0.5));
     }
 
     // Update maze with sensor readings
@@ -404,6 +407,7 @@ public:
         return false; 
     }
     int getPercentage() const { return static_cast<int>(100.0 * num_visited / TOTAL_CELLS); }
+    Position getCurrPosition() const { return current_grid_pos; }
 
     void getDisplayMaze(char ret[10][17])
     {

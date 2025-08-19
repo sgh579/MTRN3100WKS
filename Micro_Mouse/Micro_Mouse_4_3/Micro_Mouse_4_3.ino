@@ -172,7 +172,8 @@ void loop()
     // Execute new command if one was generated
     // if (next_command != '\0' && !maze_solver.isMovementInProgress()) {
     if (next_command != '\0' && maze_solver.canStartMovement()) {
-        sprintf(monitor_buffer, "new %c %d", next_command, (int) next_value);
+        Position tmp = maze_solver.getCurrPosition();
+        sprintf(monitor_buffer, "new %c %d\npos: %d %d", next_command, (int) next_value, tmp.x, tmp.y);
         show_one_line_monitor(monitor_buffer);
         executeCommand(next_command, next_value, curr_X, curr_Y, current_angle);
     }
