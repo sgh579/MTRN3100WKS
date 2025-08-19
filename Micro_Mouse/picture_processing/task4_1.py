@@ -9,6 +9,16 @@ from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Gr
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
 from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG
 
+out_path_1 = os.path.join(IMAGE_FOLER, '1_corner.png')
+out_path_2 = os.path.join(IMAGE_FOLER, '2_projected.png')
+out_path_3 = os.path.join(IMAGE_FOLER, '3_safe_zone_binary.png')
+out_path_4 = os.path.join(IMAGE_FOLER, '4_grid_graph.png')
+out_path_5 = os.path.join(IMAGE_FOLER, '5_path_on_grid_maze.png')
+out_path_6 = os.path.join(IMAGE_FOLER, '6_cropped.png')
+out_path_7 = os.path.join(IMAGE_FOLER, '7_cropped_unsafe.png')
+out_path_8 = os.path.join(IMAGE_FOLER, '8_combined_continuous_maze.png')
+out_path_9 = os.path.join(IMAGE_FOLER, '9_mixed_graph_on_img.png')
+
 def main():
     print(' ############# 4.1 starts #############')
 
@@ -30,7 +40,7 @@ def main():
         ret, frame = cap.read()
         cap.release()
         if ret:
-            cv2.imwrite(camera_raw_save_image, frame)
+            cv2.imwrite(os.path.join(IMAGE_FOLER, camera_raw_save_image), frame)
             print(f"Captured image from camera 1 and saved to: {camera_raw_save_image}")
             raw_image = camera_raw_save_image
         else:
@@ -48,12 +58,10 @@ def main():
     #                     'bottom_left':(x,y), 'bottom_right':(x,y)} or None
     # ============================
     CornerF = CornerFinder()
-    corners = CornerF.pick_corners_with_roi(os.path.join(images_folder, raw_image))
+    corners = CornerF.pick_corners_by_clicks(os.path.join(images_folder, raw_image))
     if corners is None:
         print("Cancelled or failed.")
         return
-    else: 
-        print(corners)
 
     # ============================
     # Block 2 — Perspective warp (projection)
@@ -63,8 +71,8 @@ def main():
     # Output : A rectified image saved to disk; returns the output path.
     # ============================
     proj = Projection(out_size=(2160,2160), margin=120)
-    out_file = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
-    print("Saved to:", out_file)
+    output_img = proj.warp_from_image(os.path.join(images_folder, raw_image), corners)
+    cv2.imwrite(out_path_2, output_img)
 
     # ============================
     # Block 3 — Manual threshold tuning (preview only)
@@ -81,8 +89,10 @@ def main():
         )
         # 供后续计算使用
         threshold_selected_manually = T_final
-    else:
+        print(f'selected threshold: {threshold_selected_manually}')
+    else:        
         threshold_selected_manually = 125
+        print(f'using default threshold: {threshold_selected_manually}')
 
     # ============================
     # Block 4 — Fixed-threshold binarization + morphology
@@ -94,8 +104,9 @@ def main():
     sz = SafeZone(expect_size=(2160,2160), auto_resize=False,
               threshold=threshold_selected_manually, close_kernel=5, close_iter=1,
               keep_largest=True, fill_holes=True)
-    # out_file = sz.binarize("MicromouseMazeCamera_projected_2160x2160.png", "./safe_zone_binary.png")
-    out_file = sz.binarize(os.path.join(images_folder, "2_projected.png"), os.path.join(images_folder, "3_safe_zone_binary.png"))
+
+    output_img = sz.binarize(out_path_2)
+    cv2.imwrite(out_path_3, output_img)
 
     # ============================
     # Block 5 — Build grid graph and prune edges by mask
@@ -114,9 +125,8 @@ def main():
                                             white_thresh=200,      
                                             line_thickness=3,      
                                             require_ratio=1.0)     
-    print(f"kept={kept}, removed={removed}")
-    save_path = gg.render()   
-    print("Saved to:", save_path)
+    output_img = gg.render()   
+    cv2.imwrite(out_path_4, output_img)
 
     bfs_graph = gg.graph # this is the graph to be used in bfs
     # use BFS to generate a series of motion command to complete task 4.1 in format of extended cmd
@@ -126,7 +136,7 @@ def main():
 
     start_pos = (1, 6)  # Grid position (x=1, y=7)
     end_pos = (5, 1)    # Grid position (x=7, y=1)  
-    commands, viz_path = run_pathfinding_example(bfs_graph, save_path, start_pos, end_pos)
+    commands, viz_path = run_pathfinding_example(bfs_graph, out_path_4, start_pos, end_pos)
     
     print(f"\nFinal Arduino commands to copy: {commands}")
     print(f"Path visualization: {viz_path}")

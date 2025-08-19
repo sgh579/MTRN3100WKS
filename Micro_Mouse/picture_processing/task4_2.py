@@ -7,12 +7,9 @@ from collections import deque
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
-from tools.User_Configuration import IMAGE_FOLER
+from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG
 import random
 from tools.continuous_graph import draw_graph_on_image, process_continuous_maze, continuous_bfs
-
-
-THRESHOLD_TUNER_ENABLE_FLAG = True
 
 out_path_1 = os.path.join(IMAGE_FOLER, '1_corner.png')
 out_path_2 = os.path.join(IMAGE_FOLER, '2_projected.png')
@@ -45,7 +42,7 @@ def main():
         ret, frame = cap.read()
         cap.release()
         if ret:
-            cv2.imwrite(camera_raw_save_image, frame)
+            cv2.imwrite(os.path.join(IMAGE_FOLER, camera_raw_save_image), frame)
             print(f"Captured image from camera 1 and saved to: {camera_raw_save_image}")
             raw_image = camera_raw_save_image
         else:
@@ -96,8 +93,10 @@ def main():
         )
         # 供后续计算使用
         threshold_selected_manually = T_final
-    else:
+        print(f'selected threshold: {threshold_selected_manually}')
+    else:        
         threshold_selected_manually = 125
+        print(f'using default threshold: {threshold_selected_manually}')
 
     # ============================
     # Block 4 — Fixed-threshold binarization + morphology
@@ -121,7 +120,6 @@ def main():
                                             white_thresh=200,      
                                             line_thickness=3,      
                                             require_ratio=1.0)     
-    print(f"kept={kept}, removed={removed}")
     output_img = gg.render()   
     cv2.imwrite(out_path_4, output_img)
 
@@ -152,8 +150,6 @@ def main():
         fully_connect=True,     # 大图请改 False，或替换成 k-NN
         edge_weight=10.0
     )
-
-    print("Done:", paths)
 
     output_img = draw_graph_on_image(cg, out_path_8)
     cv2.imwrite(out_path_9, output_img)
