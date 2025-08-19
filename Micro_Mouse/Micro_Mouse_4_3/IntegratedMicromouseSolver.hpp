@@ -108,7 +108,7 @@ struct Position
 class SimpleQueue
 {
 private:
-    Position PROGMEM data[MAX_QUEUE_SIZE];
+    Position data[MAX_QUEUE_SIZE];
     int front_idx, rear_idx, size;
 
 public:
@@ -145,7 +145,7 @@ public:
 class SimpleStack
 {
 private:
-    Position PROGMEM data[MAX_STACK_SIZE];
+    Position data[MAX_STACK_SIZE];
     int top_idx;
 
 public:
@@ -414,9 +414,9 @@ public:
 
     void getDisplayMaze(char ret[10][17])
     {
-        for (int x = 0; x <= MAX_MAZE_WIDTH; x++)
+        for (int x = 0; x < MAX_MAZE_WIDTH; x++)
         {
-            for (int y = 0; y <= MAX_MAZE_HEIGHT; y++)
+            for (int y = 0; y < MAX_MAZE_HEIGHT; y++)
             {
                 int row, col;
                 Cell curr = maze[x][y];

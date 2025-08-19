@@ -111,8 +111,7 @@ void setup()
     oled.setFont(Adafruit5x7);
     oled.clear();
 
-    // oled.println("Helloooo");
-
+    oled.println("Helloooo");
     
     delay(1000); // Pause for 1 seconds
 
@@ -124,14 +123,21 @@ void setup()
     // lidar setup
     lidarInitialize();
 
-    maze_solver = new IntegratedMicromouseSolver(Position(0, 0), Position(3, 3));
+    oled.println("there");
+    // maze_solver = new IntegratedMicromouseSolver(Position(0, 0), Position(3, 3));
 
     show_one_line_monitor("ROBOT setup completed");
 }
 
+
+bool yes = true; 
 void loop()
 {
-    
+    if (yes) {
+        oled.println("yes");
+        yes = false;
+    }
+    return;
     // delay(5);
     // return;
     // Read sensors
