@@ -10,6 +10,10 @@ public:
 
     // Compute the output signal required from the current/actual value.
     float compute(float input) {
+        if (!turn_on_flag) {
+            prev_error = micros();
+            return 0;
+        }
       
         curr_time = micros();
         dt = static_cast<float>(curr_time - prev_time) / 1e6;
@@ -24,12 +28,7 @@ public:
 
         prev_error = error;
 
-        if (turn_on_flag == true) {
-            return output;
-        } else {
-            return 0;
-        }
-        
+        return output;
     }
 
     // Function used to return the last calculated error. 
