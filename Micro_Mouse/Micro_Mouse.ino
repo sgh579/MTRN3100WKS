@@ -169,7 +169,7 @@ void loop() {
             float value = commands.getMoveValue();
             switch (c) {
                 case 'f':
-                    target_distance = value; // mm
+                    target_distance = value * LENGTH_TO_ROTATION_SCALE; // mm
                     target_angle = current_angle;
                     yaw_controller.reset();
                     yaw_controller.zeroAndSetTarget(current_angle, 0);
@@ -195,7 +195,7 @@ void loop() {
             prev_cmd = c; 
             commands.next();
         }        
-        target_motion_rotation_radians = (target_distance * LENGTH_TO_ROTATION_SCALE) / R;
+        target_motion_rotation_radians = (target_distance ) / R;
         delay_between_cmd = 50;
         // delay for a while after one cmd is executed
     }
@@ -362,7 +362,7 @@ void forward_Update_Target() {
         (target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
     );
     motor2_encoder_position_controller.setTarget(
-        (-target_motion_rotation_radians * speed_factor) - yaw_output + lidar_correction
+        (-target_motion_rotation_radians * speed_factor) + yaw_output + lidar_correction
     );
 }
 
