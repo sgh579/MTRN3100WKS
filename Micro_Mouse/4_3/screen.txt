@@ -20,7 +20,7 @@ maze = [
     |_|_|_|_|    
 ]
 
-vector<vector<char>> maze = {
+char maze [17][10] = {
         {' ', ' ', ' ', ' ', ' ', '_', ' ', '_', ' ', '_', ' ', '_', ' ', ' ', ' ', ' ', ' '},   // row 0
         {' ', ' ', ' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' ', ' ', ' '},   // row 1
         {' ', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', '|', '_', ' '},   // row 2
@@ -43,23 +43,23 @@ for (x=0;x<=size;x++) {
     for (y=0;y<=size;y++) {
         define a cell
         if ~northWall {
-            row = x;
-            col = 1+2y;
+            col = x;
+            row = 1+2y;
             maze[row][col]=' '
         }
         if ~southWall {
-            row = x + 1;
-            col = 1+2y;
+            col = x + 1;
+            row = 1+2y;
             maze[row][col]=' '
         }
         if ~eastWall {
-            row = x + 1;
-            col = 2y;
+            col = x + 1;
+            row = 2y;
             maze[row][col]=' '
         }
         if ~westWall {
-            row = x + 1;
-            col = 2y;
+            col = x + 1;
+            row = 2y;
             maze[row][col]=' '
         }
 
