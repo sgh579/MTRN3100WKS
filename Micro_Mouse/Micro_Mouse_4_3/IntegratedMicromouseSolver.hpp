@@ -230,9 +230,9 @@ public:
                 if (x == maze_width - 1)
                     maze[y][x].setWall(EAST, true);
                 if (y == 0)
-                    maze[y][x].setWall(SOUTH, true);
-                if (y == maze_height - 1)
                     maze[y][x].setWall(NORTH, true);
+                if (y == maze_height - 1)
+                    maze[y][x].setWall(SOUTH, true);
             }
         }
     }
