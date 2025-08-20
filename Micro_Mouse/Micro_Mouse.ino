@@ -18,7 +18,7 @@ char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
-#define LENGTH_TO_ROTATION_SCALE 0.83 // to be adjusted based on test
+#define LENGTH_TO_ROTATION_SCALE 0.95 // to be adjusted based on test
 #define LENGTH_OF_AXLE 82 // length of the axle in mm, used for distance calculations
 
 //These are the pins set up
