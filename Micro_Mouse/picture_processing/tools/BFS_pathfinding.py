@@ -100,9 +100,9 @@ class BFSPathfinder:
             
             # Convert grid movement to direction
             if dx == 1 and dy == 0:      # Move right (East)
-                target_direction = 270
-            elif dx == -1 and dy == 0:   # Move left (West)
                 target_direction = 90
+            elif dx == -1 and dy == 0:   # Move left (West)
+                target_direction = 270
             elif dx == 0 and dy == -1:   # Move up (North)
                 target_direction = 0
             elif dx == 0 and dy == 1:    # Move down (South)
