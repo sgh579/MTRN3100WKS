@@ -7,7 +7,7 @@ from collections import deque
 from tools.image_projection import CornerFinder, Projection
 from tools.grid_graph import ThresholdTuner, SafeZone, DisplayGridOnImg, Grid_Graph
 from tools.BFS_pathfinding import BFSPathfinder, run_pathfinding_example
-from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG, start_pos, end_pos, THRESHOLD_SELECTED_MANUALLY
+from tools.User_Configuration import IMAGE_FOLER, THRESHOLD_TUNER_ENABLE_FLAG, start_pos, end_pos, THRESHOLD_SELECTED_MANUALLY, CONTINUOUS_MAZE_TOP_LEFT_CELL
 import random
 from tools.continuous_graph import draw_graph_on_image, process_continuous_maze, continuous_bfs
 
@@ -124,7 +124,8 @@ def main():
     cv2.imwrite(out_path_4, output_img)
 
     # move it upside
-    continuous_maze_top_left_cell = (2, 2)
+    continuous_maze_top_left_cell = CONTINUOUS_MAZE_TOP_LEFT_CELL 
+
     continuous_maze_bottom_right_cell = (continuous_maze_top_left_cell[0]+4, continuous_maze_top_left_cell[1]+4)
 
     # delete those nodes inside continuous maze

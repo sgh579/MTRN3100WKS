@@ -5,8 +5,6 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
-import os
-from tools.User_Configuration import IMAGE_FOLER
 
 class BFSPathfinder:
     def __init__(self, graph, grid_rows=9, grid_cols=9):
@@ -100,9 +98,9 @@ class BFSPathfinder:
             
             # Convert grid movement to direction
             if dx == 1 and dy == 0:      # Move right (East)
-                target_direction = 90
-            elif dx == -1 and dy == 0:   # Move left (West)
                 target_direction = 270
+            elif dx == -1 and dy == 0:   # Move left (West)
+                target_direction = 90
             elif dx == 0 and dy == -1:   # Move up (North)
                 target_direction = 0
             elif dx == 0 and dy == 1:    # Move down (South)
@@ -145,7 +143,7 @@ class BFSPathfinder:
                 optimized_commands.append(cmd)
                 i += 1
         
-        return "|".join(optimized_commands)
+        return ",".join(optimized_commands)
     
     def visualize_path(self, 
                       image_path: str, 
@@ -209,9 +207,9 @@ class BFSPathfinder:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
         
         # Save the visualization
-        
-        p = Path(image_path)
-        output_path = os.path.join(IMAGE_FOLER, "5_path_visualization.png")
+        if output_path is None:
+            p = Path(image_path)
+            output_path = str(p.with_name(f"{p.stem}_path_visualization{p.suffix}"))
         
         cv2.imwrite(output_path, canvas)
         return output_path
@@ -242,15 +240,15 @@ def run_pathfinding_example(bfs_graph, image_path: str, start, end):
     print(f"Path found with {len(path)} nodes:")
     for i, node_id in enumerate(path):
         node = bfs_graph.nodes[node_id]
-        # print(f"  {i+1}: Node {node_id} at grid ({node.grid_x}, {node.grid_y})")
+        print(f"  {i+1}: Node {node_id} at grid ({node.grid_x}, {node.grid_y})")
     
     # Convert path to commands
     commands = pathfinder.path_to_commands(path)
-    # print(f"Motion commands: {commands}")
+    print(f"Motion commands: {commands}")
     
     # Visualize the path
     viz_path = pathfinder.visualize_path(image_path, path, start_pos, end_pos)
-    # print(f"Path visualization saved to: {viz_path}")
+    print(f"Path visualization saved to: {viz_path}")
     
     return commands, viz_path
 
