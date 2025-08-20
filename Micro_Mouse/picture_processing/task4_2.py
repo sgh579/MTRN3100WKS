@@ -91,7 +91,7 @@ def main():
             os.path.join(images_folder, "2_projected.png"),
             out_path=os.path.join(images_folder, "safe_zone_binary_manual.png")
         )
-        # 供后续计算使用
+        #        
         threshold_selected_manually = T_final
         print(f'selected threshold: {threshold_selected_manually}')
     else:        
@@ -148,7 +148,7 @@ def main():
         unsafe_iterations=3,
         node_margin_px=50,
         division=20,
-        fully_connect=True,     # 大图请改 False，或替换成 k-NN
+        fully_connect=True,     #      False，     k-NN
         edge_weight=10.0
     )
 

@@ -12,29 +12,29 @@ ORDER_NAMES = ["top_left", "top_right", "bottom_left", "bottom_right"]
 class ROIParams:
     max_window_w: int = 1400
     max_window_h: int = 900
-    # 形态学去噪
+    # Morphological denoising
     open_kernel: int = 3
     open_iter: int = 1
-    # 当有多个黑块时的选择策略：'largest' 或 'nearest'
+    # Selection strategy when there are multiple black blocks: 'largest' or 'nearest'
     pick: str = "largest"
 
 class CornerFinder:
     def __init__(self, rp: ROIParams = ROIParams()):
         self.rp = rp
-        self._img = None           # 原图 BGR
-        self._disp = None          # 显示图（缩放）
+        self._img = None           
+        self._disp = None          
         self._scale = 1.0
         self._points: CornerMap = {}
         self._next_idx = 0
         self._win = "corner_roi_picker"
 
-        # 当前框选状态
+        # Current selection status
         self._dragging = False
-        self._p0 = None            # (x, y) 显示坐标
+        self._p0 = None            # (x, y) Display coordinates
         self._p1 = None
-        self._roi_rect = None      # (x1, y1, x2, y2) 原图坐标
-        self._roi_center = None    # 原图坐标
-        self._roi_centroid = None  # 识别出的质心（原图坐标）
+        self._roi_rect = None      # (x1, y1, x2, y2) Original image coordinates
+        self._roi_center = None    # Original image coordinates
+        self._roi_centroid = None  # Identified center of mass (original image coordinates)
 
     # ---------- utils ----------
     @staticmethod
@@ -50,27 +50,27 @@ class CornerFinder:
     def _draw(self):
         disp = self._disp.copy()
 
-        # 已经确认过的点
+        # Confirmed points
         for name, (cx, cy) in self._points.items():
             dx, dy = int(cx * self._scale), int(cy * self._scale)
             cv2.circle(disp, (dx, dy), 8, (0, 255, 0), 2)
             cv2.putText(disp, name, (dx + 8, dy - 8),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 1, cv2.LINE_AA)
 
-        # 当前拖拽矩形（显示坐标）
+        # Current drag rectangle (display coordinates)
         if self._p0 and self._p1:
             x0, y0 = self._p0
             x1, y1 = self._p1
             cv2.rectangle(disp, (x0, y0), (x1, y1), (0, 200, 255), 2)
 
-        # 当前 ROI 质心
+        # Current ROI centroid
         if self._roi_centroid is not None:
             dx, dy = int(self._roi_centroid[0] * self._scale), int(self._roi_centroid[1] * self._scale)
             cv2.circle(disp, (dx, dy), 10, (0, 0, 255), 2)
             cv2.putText(disp, ORDER_NAMES[self._next_idx], (dx + 10, dy - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2, cv2.LINE_AA)
 
-        # 顶部提示
+        # Top Tips
         if self._next_idx < 4:
             hint = f"Drag a box around {ORDER_NAMES[self._next_idx]} | Enter=confirm  r=redo  q=quit"
         else:
@@ -82,9 +82,9 @@ class CornerFinder:
 
     # ---------- core processing on ROI ----------
     def _process_roi_and_get_centroid(self, rect_xyxy: Tuple[int,int,int,int]) -> Optional[Tuple[float,float]]:
-        """rect_xyxy 在原图坐标系；返回黑色连通域的质心 (cx, cy)"""
+        """rect_xyxy is in the original image coordinate system; returns the centroid (cx, cy) of the black connected region"""
         x1, y1, x2, y2 = rect_xyxy
-        # 修正边界
+        # Correcting Boundaries
         H, W = self._img.shape[:2]
         x1, x2 = np.clip([x1, x2], 0, W-1)
         y1, y2 = np.clip([y1, y2], 0, H-1)
@@ -93,20 +93,20 @@ class CornerFinder:
 
         roi = self._img[y1:y2+1, x1:x2+1]
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        # Otsu 二值 + 取反（黑→白）
+        # Otsu binary + inversion (black → white)
         _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-        # 轻微开运算去噪
+        # Slightly open the calculation denoising
         if self.rp.open_kernel > 1 and self.rp.open_iter > 0:
             k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.rp.open_kernel, self.rp.open_kernel))
             bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, k, iterations=self.rp.open_iter)
 
-        # 连通域
+        # Connected domain
         num, labels, stats, centroids = cv2.connectedComponentsWithStats(bw, connectivity=8)
         if num <= 1:
-            return None  # 只有背景
+            return None  # Only background
 
-        # 过滤掉超小噪声（< 10 像素）
+        # Filter out very small noise (< 10 pixels)
         valid: List[int] = []
         for i in range(1, num):
             area = stats[i, cv2.CC_STAT_AREA]
@@ -115,7 +115,7 @@ class CornerFinder:
         if not valid:
             return None
 
-        # 选择策略
+        # Select a strategy
         if self.rp.pick == "nearest":
             cx0 = (x1 + x2) / 2.0
             cy0 = (y1 + y2) / 2.0
@@ -125,7 +125,7 @@ class CornerFinder:
             best_i = max(valid, key=lambda i: stats[i, cv2.CC_STAT_AREA])
 
         cx, cy = centroids[best_i]
-        # 映射回原图坐标
+        #        
         return (x1 + float(cx), y1 + float(cy))
 
     # ---------- interaction ----------
@@ -145,7 +145,7 @@ class CornerFinder:
         elif event == cv2.EVENT_LBUTTONUP and self._dragging:
             self._dragging = False
             self._p1 = (x, y)
-            # 转为原图坐标的矩形
+            #          
             x0, y0 = self._p0
             x1, y1 = self._p1
             x0o, y0o = int(round(x0 / self._scale)), int(round(y0 / self._scale))
@@ -187,15 +187,15 @@ class CornerFinder:
         self._draw()
         while True:
             key = cv2.waitKey(20) & 0xFFFF
-            if key in (27, ord('q')):  # 退出
+            if key in (27, ord('q')):  #   
                 cv2.destroyAllWindows()
                 return None
-            if key in (ord('r'),):     # 重做当前角
+            if key in (ord('r'),):     #      
                 self._p0 = self._p1 = None
                 self._roi_rect = None
                 self._roi_centroid = None
                 self._draw()
-            if key in (13, 10):        # Enter 确认
+            if key in (13, 10):        # Enter   
                 if self._roi_centroid is None:
                     print("[INFO] No centroid yet. Drag a box first.")
                     continue
@@ -203,7 +203,7 @@ class CornerFinder:
                 self._points[name] = (int(round(self._roi_centroid[0])),
                                       int(round(self._roi_centroid[1])))
                 self._next_idx += 1
-                # 重置状态，准备下一角
+                #     ，     
                 self._p0 = self._p1 = None
                 self._roi_rect = None
                 self._roi_centroid = None
@@ -214,7 +214,7 @@ class CornerFinder:
             if self._next_idx >= 4:
                 break
 
-        # 保存标注图
+        #      
         vis = self._img.copy()
         for name, (cx, cy) in self._points.items():
             cv2.circle(vis, (cx, cy), 10, (0, 0, 255), 2)
@@ -231,7 +231,7 @@ class Projection:
         self.margin = margin
 
     def _dest_points(self) -> np.ndarray:
-        # 目标矩形四角（按 TL, TR, BL, BR 顺序）
+        #       （  TL, TR, BL, BR   ）
         tl = (self.margin, self.margin)
         tr = (self.out_w - self.margin, self.margin)
         bl = (self.margin, self.out_h - self.margin)
@@ -245,7 +245,7 @@ class Projection:
                         out_path: Optional[str] = None) -> str:
         """
         corners: {'top_left':(x,y), 'top_right':(x,y), 'bottom_left':(x,y), 'bottom_right':(x,y)}
-        保存到当前目录，返回输出文件路径。
+               ，        。
         """
         required = ["top_left", "top_right", "bottom_left", "bottom_right"]
         for k in required:
@@ -256,7 +256,7 @@ class Projection:
         if img is None:
             raise FileNotFoundError(f"Cannot read image: {image_path}")
 
-        # 源点：按 TL, TR, BL, BR 顺序
+        #   ：  TL, TR, BL, BR   
         src = np.array([
             corners["top_left"],
             corners["top_right"],
@@ -266,11 +266,11 @@ class Projection:
 
         dst = self._dest_points()
 
-        # 计算透视矩阵并变换
+        #          
         M = cv2.getPerspectiveTransform(src, dst)
         warped = cv2.warpPerspective(img, M, (self.out_w, self.out_h), flags=cv2.INTER_LINEAR)
 
-        # 输出路径
+        #     
         if out_path is None:
             stem = Path(image_path).stem
             out_path = f"./{stem}_projected_{self.out_w}x{self.out_h}.png"
@@ -280,7 +280,7 @@ class Projection:
 
 if __name__ == "__main__":
     CornerF = CornerFinder()
-    # 保持你的路径不变
+    #         
     corners = CornerF.pick_corners_with_roi("Micro_Mouse\\picture_processing\\MicromouseMazeCamera.jpg")
     if corners is None:
         print("Cancelled or failed.")

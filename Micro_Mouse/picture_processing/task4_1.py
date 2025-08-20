@@ -87,7 +87,7 @@ def main():
             os.path.join(images_folder, "2_projected.png"),
             out_path=os.path.join(images_folder, "safe_zone_binary_manual.png")
         )
-        # 供后续计算使用
+        #        
         threshold_selected_manually = T_final
         print(f'selected threshold: {threshold_selected_manually}')
     else:        

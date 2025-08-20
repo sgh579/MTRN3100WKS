@@ -17,7 +17,7 @@ class ThresholdTuner:
         self.disp = None
         self.win = "Threshold Tuner"
         self.out_path = "./binary.png"
-        # 新增：实时记录当前阈值与反相状态
+        #   ：             
         self.current_T = 128
         self.current_invert = 0
         self.current_bw = None
@@ -32,23 +32,23 @@ class ThresholdTuner:
         return img.copy(), 1.0
 
     def _update(self, _=None):
-        # 读取并保存当前滑块值
+        #           
         self.current_T = cv2.getTrackbarPos("Threshold", self.win)   # 0..255
         self.current_invert = cv2.getTrackbarPos("Invert(0/1)", self.win)  # 0/1
 
-        # 按当前阈值做全局阈值化
+        #            
         _, bw = cv2.threshold(self.gray, self.current_T, 255, cv2.THRESH_BINARY)
         if self.current_invert == 1:
             bw = cv2.bitwise_not(bw)
 
-        # 显示（按显示比例缩放）
+        #   （       ）
         show = bw
         if self.scale < 1.0:
             h, w = bw.shape[:2]
             show = cv2.resize(bw, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_NEAREST)
 
         cv2.imshow(self.win, show)
-        self.current_bw = bw  # 保留原分辨率结果
+        self.current_bw = bw  #         
 
     def run(self, image_path: str, out_path: str = "./binary.png"):
         p = Path(image_path)
@@ -64,7 +64,7 @@ class ThresholdTuner:
         self.disp, self.scale = self._fit(self.img)
 
         cv2.namedWindow(self.win, cv2.WINDOW_NORMAL)
-        # 初始化滑块并触发一次更新
+        #             
         cv2.createTrackbar("Threshold", self.win, self.current_T, 255, self._update)
         cv2.createTrackbar("Invert(0/1)", self.win, self.current_invert, 1, self._update)
         self._update()
@@ -76,15 +76,15 @@ class ThresholdTuner:
                 break
             if k in (ord('s'), ord('S')):
                 cv2.imwrite(self.out_path, self.current_bw)
-                print(f"已保存：{self.out_path}")
+                print(f"   ：{self.out_path}")
 
-        # 在关闭窗口前，取最终值（也可直接用 self.current_T/self.current_invert）
+        #       ，    （      self.current_T/self.current_invert）
         final_T = self.current_T
         final_invert = self.current_invert
         final_bw = self.current_bw
 
         cv2.destroyAllWindows()
-        # 返回：二值图、最终阈值、是否反相
+        #   ：   、    、    
         return final_bw, final_T, final_invert
     
 class SafeZone:
@@ -126,46 +126,46 @@ class SafeZone:
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # 固定阈值二值化（白=地板）
+        #        （ =  ）
         ttype = cv2.THRESH_BINARY_INV if self.invert else cv2.THRESH_BINARY
         _, bw = cv2.threshold(gray, self.threshold, 255, ttype)
 
-        # 1) 闭运算：填小缝、连通白区
+        # 1)    ：   、    
         if self.close_kernel > 1 and self.close_iter > 0:
             k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.close_kernel, self.close_kernel))
             bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, k, iterations=self.close_iter)
 
-        # 2) 只保留最大白色连通域（通常是整片地板）
+        # 2)           （       ）
         if self.keep_largest:
             num, labels, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
             if num > 1:
-                idx = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])  # 排除背景0
+                idx = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])  #     0
                 bw = np.where(labels == idx, 255, 0).astype(np.uint8)
 
-        # 3) 填充该白区内部的孔洞（把白区变成实心）
+        # 3)           （       ）
         if self.fill_holes:
-            inv = cv2.bitwise_not(bw)                    # 黑=候选孔洞/背景
+            inv = cv2.bitwise_not(bw)                    #  =    /  
             h, w = inv.shape
             mask = np.zeros((h + 2, w + 2), np.uint8)
-            cv2.floodFill(inv, mask, (0, 0), 255)       # 从边界连通的“外背景”填充为白
-            holes = cv2.bitwise_not(inv)                 # 现在的白=原先的内孔洞
-            bw = cv2.bitwise_or(bw, holes)               # 白区并上孔洞 → 实心
+            cv2.floodFill(inv, mask, (0, 0), 255)       #       “   ”    
+            holes = cv2.bitwise_not(inv)                 #     =      
+            bw = cv2.bitwise_or(bw, holes)               #        →   
         
         return bw
 
 class DisplayGridOnImg:
     """
-    在图像上叠加均匀网格并保存。
-    默认把图像划分为 9×9 个网格（即 8 条竖线 + 8 条横线）。
+Overlays a uniform grid on the image and saves it.
+The default grid divides the image into a 9×9 grid (8 vertical lines + 8 horizontal lines).
     """
     def __init__(self,
                  rows: int = 9,
                  cols: int = 9,
-                 color: Tuple[int, int, int] = (0, 0, 255),  # BGR 红色
+                 color: Tuple[int, int, int] = (0, 0, 255),  # BGR   
                  thickness: int = 2,
                  draw_border: bool = False,
                  line_type: int = cv2.LINE_AA):
-        assert rows > 1 and cols > 1, "rows/cols 必须 > 1"
+        assert rows > 1 and cols > 1, "rows/cols    > 1"
         self.rows = rows
         self.cols = cols
         self.color = color
@@ -175,8 +175,8 @@ class DisplayGridOnImg:
 
     def draw_and_save(self, image_path: str, out_path: Optional[str] = None) -> str:
         """
-        读取 image_path，叠加网格并保存。
-        返回保存路径。
+           image_path，       。
+              。
         """
         p = Path(image_path)
         if not p.exists():
@@ -189,21 +189,20 @@ class DisplayGridOnImg:
         h, w = img.shape[:2]
         out = img.copy()
 
-        # 竖线：在 x = j * (w/cols), j = 1..cols-1
+        #   ：  x = j * (w/cols), j = 1..cols-1
         for j in range(1, self.cols):
             x = round(j * w / self.cols)
             cv2.line(out, (x, 0), (x, h - 1), self.color, self.thickness, self.line_type)
 
-        # 横线：在 y = i * (h/rows), i = 1..rows-1
+        # Horizontal: present y = i * (h/rows), i = 1..rows-1
         for i in range(1, self.rows):
             y = round(i * h / self.rows)
             cv2.line(out, (0, y), (w - 1, y), self.color, self.thickness, self.line_type)
 
-        # 可选：把四周边框也画出来
+        # Optional: Draw the border around the edges
         if self.draw_border:
             cv2.rectangle(out, (0, 0), (w - 1, h - 1), self.color, self.thickness, self.line_type)
 
-        # 保存
         if out_path is None:
             out_path = str(p.with_name(f"{p.stem}_grid_{self.rows}x{self.cols}{p.suffix}"))
         cv2.imwrite(out_path, out)
@@ -214,16 +213,16 @@ class Grid_Graph:
                  image_path: str,
                  rows: int = 9,
                  cols: int = 9,
-                 connectivity: int = 4,        # 4 或 8
-                 node_radius: int = 4,         # 基础半径；绘制时会 * node_diameter_scale
-                 node_diameter_scale: int = 3, # 直径放大倍数（=3），半径也会*3
-                 grid_color: Tuple[int,int,int] = (0, 0, 255),     # 红色网格线 (BGR)
+                 connectivity: int = 4,        # 4 or 8
+                 node_radius: int = 4,         #     ；     * node_diameter_scale
+                 node_diameter_scale: int = 3, # If the diameter is magnified (=3), the radius will also be *3
+                 grid_color: Tuple[int,int,int] = (0, 0, 255),     
                  grid_thickness: int = 2,
-                 edge_color: Tuple[int,int,int] = (0, 255, 0),     # 绿色连线 (BGR)
+                 edge_color: Tuple[int,int,int] = (0, 255, 0),     
                  edge_thickness: int = 2,
-                 node_color: Tuple[int,int,int] = (0, 255, 255)):  # 节点颜色（可改）
-        assert rows > 1 and cols > 1, "rows/cols 必须 > 1"
-        assert connectivity in (4, 8), "connectivity 只能是 4 或 8"
+                 node_color: Tuple[int,int,int] = (0, 255, 255)):  
+        assert rows > 1 and cols > 1, "rows/cols must > 1"
+        assert connectivity in (4, 8), "connectivity can only be 4 or 8"
         self.image_path = image_path
         self.rows = rows
         self.cols = cols
@@ -250,7 +249,7 @@ class Grid_Graph:
         return img
 
     def _compute_centers(self):
-        """计算网格中心像素坐标与grid索引（0-based）"""
+        """Calculate the grid center pixel coordinates and grid index (0-based)"""
         h, w = self.img.shape[:2]
         cell_w = w / self.cols
         cell_h = h / self.rows
@@ -269,17 +268,17 @@ class Grid_Graph:
         return math.hypot(x2 - x1, y2 - y1)
 
     def build(self) -> "Graph":
-        """创建图：网格中心建点；按 4/8 邻接连边（权重=像素距离）"""
+        """Create a graph: Create points at the center of the grid; use 4/8 adjacency for edges (weight = pixel distance)"""
         self.img = self._load_image()
         self._centers = self._compute_centers()
 
         G = Graph()
 
-        # 1) 加节点
+        # 1) Add Node
         for nid, px, py, gx, gy in self._centers:
             G.add_node(nid, px, py, gx, gy)
 
-        # 2) 加边（4 邻接：右、下；8 邻接再加右下、左下）
+        # 2) Add edges (4 adjacent: right, bottom; 8 adjacent plus bottom right, bottom left)
         def nid_of(gx, gy):
             return gy * self.cols + gx
 
@@ -293,14 +292,14 @@ class Grid_Graph:
                 px_u = round((gx + 0.5) * cell_w)
                 py_u = round((gy + 0.5) * cell_h)
 
-                # 右
+                #  
                 if gx + 1 < self.cols:
                     v = nid_of(gx + 1, gy)
                     px_v = round((gx + 1 + 0.5) * cell_w)
                     py_v = py_u
                     G.add_edge(u, v, self._dist(px_u, py_u, px_v, py_v))
 
-                # 下
+                #  
                 if gy + 1 < self.rows:
                     v = nid_of(gx, gy + 1)
                     px_v = px_u
@@ -308,13 +307,13 @@ class Grid_Graph:
                     G.add_edge(u, v, self._dist(px_u, py_u, px_v, py_v))
 
                 if self.connectivity == 8:
-                    # 右下
+                    #   
                     if gx + 1 < self.cols and gy + 1 < self.rows:
                         v = nid_of(gx + 1, gy + 1)
                         px_v = round((gx + 1 + 0.5) * cell_w)
                         py_v = round((gy + 1 + 0.5) * cell_h)
                         G.add_edge(u, v, self._dist(px_u, py_u, px_v, py_v))
-                    # 左下
+                    #   
                     if gx - 1 >= 0 and gy + 1 < self.rows:
                         v = nid_of(gx - 1, gy + 1)
                         px_v = round((gx - 1 + 0.5) * cell_w)
@@ -325,14 +324,14 @@ class Grid_Graph:
         return G
 
     def render(self) -> np.ndarray:
-        """在原图上绘制：红色网格线、绿色边线、放大3倍直径的节点；保存"""
+        """Draw on the original image: red grid lines, green edges, and nodes magnified 3 times the diameter; save"""
         if self.img is None or self.graph is None or self._centers is None:
             raise RuntimeError("Call build() before render().")
 
         canvas = self.img.copy()
         h, w = canvas.shape[:2]
 
-        # 先画红色网格线
+        # Draw the red grid lines first
         for j in range(1, self.cols):
             x = round(j * w / self.cols)
             cv2.line(canvas, (x, 0), (x, h - 1), self.grid_color, self.grid_thickness, cv2.LINE_AA)
@@ -340,7 +339,7 @@ class Grid_Graph:
             y = round(i * h / self.rows)
             cv2.line(canvas, (0, y), (w - 1, y), self.grid_color, self.grid_thickness, cv2.LINE_AA)
 
-        # 再画绿色 node 之间的连线（避免重复：只画 u<v）
+        # Draw the lines between the green nodes (to avoid duplication: only draw u<v)
         drawn = set()
         for u, nbrs in self.graph.edges.items():
             for v in nbrs.keys():
@@ -353,15 +352,15 @@ class Grid_Graph:
                              self.edge_color, self.edge_thickness, cv2.LINE_AA)
                     drawn.add((u, v))
 
-        # 最后画节点（实心圆），直径×3 → 半径也×3
+        # Finally, draw the node (solid circle), diameter × 3 → radius × 3
         draw_radius = int(self.node_radius * self.node_diameter_scale)
         for nid, px, py, gx, gy in self._centers:
             cv2.circle(canvas, (int(px), int(py)), draw_radius, self.node_color, -1, cv2.LINE_AA)
-            # ← 在保存的图片上打印 grid 坐标 (gx, gy)
+            # ← Print grid coordinates (gx, gy) on the saved image
             label = f"({gx},{gy})"
-            pos = (int(px) + draw_radius + 4, int(py) - draw_radius - 4)  # 文本位置：圆点右上
+            pos = (int(px) + draw_radius + 4, int(py) - draw_radius - 4)  # Text position: upper right of the dot
             fs = 0.6
-            # 先画黑色描边再画白字，提升可读性
+            # Draw the black outline first and then the white text to improve readability
             cv2.putText(canvas, label, pos, cv2.FONT_HERSHEY_SIMPLEX, fs, (0, 0, 0), 3, cv2.LINE_AA)
             cv2.putText(canvas, label, pos, cv2.FONT_HERSHEY_SIMPLEX, fs, (255, 255, 255), 1, cv2.LINE_AA)
 
@@ -373,16 +372,16 @@ class Grid_Graph:
                              require_ratio: float = 1.0,
                              mid_ratio: float = 0.5) -> Tuple[int, int]:
         """
-        用二值/灰度掩膜筛边：只有“沿边整条线的像素都为白（≥white_thresh）”才保留。
-        - white_thresh: 将掩膜灰度 >= 该值视为白
-        - line_thickness: 在掩膜上检查的线宽（像素）
-        - require_ratio: 允许的白像素占比阈值（严格全白=1.0，可放宽如0.98）
-        返回：(保留边数, 删除边数)
+Use a binary/grayscale mask to filter edges: Only pixels along the entire line of edges that are white (≥ white_thresh) are retained.
+- white_thresh: Mask grayscale >= this value is considered white.
+- line_thickness: Line thickness (in pixels) to check on the mask.
+- require_ratio: Permissible white pixel ratio threshold (strictly 1.0 for all white pixels, can be relaxed to 0.98).
+Returns: (number of edges to retain, number of edges to remove)
         """
         if self.graph is None or self.img is None:
             raise RuntimeError("Call build() before filter_edges_by_mask().")
 
-        # 读入掩膜
+
         p = Path(mask_image_path)
         if not p.exists():
             raise FileNotFoundError(mask_image_path)
@@ -390,38 +389,38 @@ class Grid_Graph:
         if mask is None:
             raise IOError(f"Failed to read mask: {mask_image_path}")
 
-        # 尺寸对齐
+        # Dimension Alignment
         H, W = self.img.shape[:2]
         if mask.shape[:2] != (H, W):
-            # 二值/标签掩膜用最近邻缩放，避免灰度插值
+            # Binary/label masks are scaled using nearest neighbors to avoid grayscale interpolation
             mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
 
         to_remove = []
 
-        # 只检查 4 邻边（左右上下）。我们在 build 时可能有8邻接；这里只删属于4邻的边。
+        # Only check 4-neighbor edges (left, right, top, and bottom). We may have 8 adjacencies when building; here we only delete edges that belong to the 4-neighbors.
         def is_4_neighbor(u, v):
             nu, nv = self.graph.nodes[u], self.graph.nodes[v]
             dx = abs(nu.grid_x - nv.grid_x)
             dy = abs(nu.grid_y - nv.grid_y)
-            return (dx + dy) == 1  # 曼哈顿距离1：上下或左右
+            return (dx + dy) == 1  # Manhattan distance 1: up and down or left and right
 
-        # 枚举无向边（u < v）
+        # Enumerate undirected edges (u < v)
         for u, nbrs in self.graph.edges.items():
             for v in list(nbrs.keys()):
                 if u >= v:
                     continue
                 if not is_4_neighbor(u, v):
-                    continue  # 只处理上下左右
+                    continue  # Only process up, down, left and right
 
                 nu = self.graph.nodes[u]
                 nv = self.graph.nodes[v]
                 x1, y1 = int(nu.pixel_x), int(nu.pixel_y)
                 x2, y2 = int(nv.pixel_x), int(nv.pixel_y)
 
-                # 在一张空掩膜上画这条线，作为采样通道
+                # Draw this line on an empty mask as a sampling channel
                 line_mask = np.zeros((H, W), dtype=np.uint8)
 
-                alpha = float(np.clip(mid_ratio, 1e-6, 1.0))   # 0~1 内
+                alpha = float(np.clip(mid_ratio, 1e-6, 1.0))   # 0~1 
                 t0 = (1.0 - alpha) / 2.0
                 t1 = 1.0 - t0
 
@@ -433,7 +432,7 @@ class Grid_Graph:
                 cv2.line(line_mask, (mx1, my1), (mx2, my2), 255, thickness=line_thickness, lineType=cv2.LINE_8)
                 line_vals = mask[line_mask > 0]
                 if line_vals.size == 0:
-                    # 理论不会发生；稳妥起见当作不通过
+                    # Theoretically, it won't happen; to be safe, treat it as not passing.
                     to_remove.append((u, v))
                     continue
 
@@ -441,7 +440,7 @@ class Grid_Graph:
                 if white_ratio < require_ratio:
                     to_remove.append((u, v))
 
-        # 批量删除
+
         for (u, v) in to_remove:
             self.graph.remove_edge(u, v)
 
@@ -457,7 +456,7 @@ class Grid_Graph:
                           require_ratio: float = 1.0,
                           mid_ratio: float = 0.5) -> str:
         """
-        便捷方法：先按掩膜筛边，再 render() 保存。
+            ：      ，  render()   。
         """
         self.filter_edges_by_mask(mask_image_path,
                                   white_thresh=white_thresh,
@@ -533,16 +532,16 @@ class Graph:
             return False
         self.nodes_cnt -= 1
         
-        # 删除与该节点相连的所有边（邻居里的回边也要删）
+        # Delete all edges connected to the node (including back edges in neighbors)
         neighbors = list(self.edges.get(node_id, {}).keys())
         for nb in neighbors:
             if nb in self.edges and node_id in self.edges[nb]:
                 del self.edges[nb][node_id]
                 self.edges_cnt -= 1
-        # 删掉该节点自己的邻接表
+        # Delete the node's own adjacency list
         if node_id in self.edges:
             del self.edges[node_id]
 
-        # 最后删节点本体
+        # Finally delete the node body
         del self.nodes[node_id]
         return True
