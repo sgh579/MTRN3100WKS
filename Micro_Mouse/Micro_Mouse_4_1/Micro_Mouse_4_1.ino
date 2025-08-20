@@ -16,7 +16,7 @@
 // char *script = "f180|o180|f180|o0|f180|o180|f180|o0|f180|o180|f180|o0";
 // char *script = "o90|o180|o270|o0";
 // char *script = "o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0|o90|o180|o270|o0";
-char *script = "o36.9|f100|o216.9|f100";
+char *script = "f180|o90|f180|o0|f180|o90|f180|o0|f180|o270|f180|o0|f180|o90|f180|o0|f360|o270|f180|o0|f180|o270|f180|o0|f180|o270|f720|o180|f540|o270|f180|o0|f180|o270|f180|o180|f720|o90|f180|o180|f180|o90|f180|o0|f180|o90|f180|o180|f360|o90|f360|o0|f180|o0";
 
 // ROBOT geometry
 #define R 15.5 // radius of the wheel
