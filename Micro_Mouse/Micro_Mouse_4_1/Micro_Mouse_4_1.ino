@@ -152,7 +152,7 @@ void loop() {
     // Take next instruction
     curr_X = encoder_odometry.getX();
     curr_Y = encoder_odometry.getY();
-    current_angle = mpu.getAngleZ();
+    current_angle = mpu.getAngleZ() + 180;
 
     // modify the kinematic control target only when
     // the command pointer is at the start or the previous command has been completed
