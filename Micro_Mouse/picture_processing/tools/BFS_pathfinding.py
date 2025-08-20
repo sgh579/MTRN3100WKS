@@ -145,7 +145,7 @@ class BFSPathfinder:
                 optimized_commands.append(cmd)
                 i += 1
         
-        return ",".join(optimized_commands)
+        return "|".join(optimized_commands)
     
     def visualize_path(self, 
                       image_path: str, 
